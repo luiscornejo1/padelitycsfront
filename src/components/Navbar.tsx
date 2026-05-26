@@ -5,9 +5,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface NavbarProps {
   onNavigateHome: () => void;
   onStartOnboarding: () => void;
+  onNavigateAmericanosLive: () => void;
+  onNavigateAdmin?: () => void;
 }
 
-export default function Navbar({ onNavigateHome, onStartOnboarding }: NavbarProps) {
+export default function Navbar({ onNavigateHome, onStartOnboarding, onNavigateAmericanosLive, onNavigateAdmin }: NavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
@@ -61,6 +63,21 @@ export default function Navbar({ onNavigateHome, onStartOnboarding }: NavbarProp
             Noticias
           </a>
           <button
+            onClick={onNavigateAmericanosLive}
+            className="text-[11px] font-bold text-blue-400 tracking-[0.15em] uppercase hover:text-blue-300 transition-colors duration-300 flex items-center gap-1"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+            En Vivo
+          </button>
+          {onNavigateAdmin && (
+            <button
+              onClick={onNavigateAdmin}
+              className="text-[11px] font-bold text-emerald-400 tracking-[0.15em] uppercase hover:text-emerald-300 transition-colors duration-300"
+            >
+              Soy Organizador
+            </button>
+          )}
+          <button
             onClick={onStartOnboarding}
             className="text-[11px] font-bold text-white/70 tracking-[0.15em] uppercase hover:text-white transition-colors duration-300"
           >
@@ -91,7 +108,7 @@ export default function Navbar({ onNavigateHome, onStartOnboarding }: NavbarProp
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3 }}
-            className="bg-black/90 backdrop-blur-xl border-t border-white/10 overflow-hidden"
+            className="absolute left-0 right-0 top-[72px] h-[calc(100vh-72px)] bg-black/95 backdrop-blur-xl border-t border-white/10 overflow-y-auto"
           >
             <div className="px-6 py-8 space-y-5 text-center">
               <a
@@ -108,6 +125,27 @@ export default function Navbar({ onNavigateHome, onStartOnboarding }: NavbarProp
               >
                 Noticias
               </a>
+              <button
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  onNavigateAmericanosLive();
+                }}
+                className="block w-full text-blue-400 hover:text-blue-300 font-bold text-[13px] tracking-[0.2em] uppercase py-2 transition-colors flex justify-center items-center gap-2"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                Torneos en Vivo
+              </button>
+              {onNavigateAdmin && (
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    onNavigateAdmin();
+                  }}
+                  className="block w-full text-emerald-400 hover:text-emerald-300 font-bold text-[13px] tracking-[0.2em] uppercase py-2 transition-colors"
+                >
+                  Soy Organizador
+                </button>
+              )}
               <button
                 onClick={() => {
                   setIsMenuOpen(false);

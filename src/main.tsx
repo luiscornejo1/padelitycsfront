@@ -3,8 +3,12 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 
+import { TournamentProvider } from './context/TournamentContext'
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <TournamentProvider>
+      <App />
+    </TournamentProvider>
   </StrictMode>,
 )

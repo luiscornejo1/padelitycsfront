@@ -11,7 +11,7 @@ export interface Player {
 
 export type Gender = 'Masculino' | 'Femenino';
 export type Category = '1era' | '2da' | '3ra' | '4ta' | '5ta' | '6ta';
-export type ViewState = 'overview' | 'detail' | 'onboarding';
+export type ViewState = 'overview' | 'detail' | 'onboarding' | 'americanos-live' | 'admin-dashboard' | 'admin-login';
 
 export const CATEGORIES: Category[] = ['1era', '2da', '3ra', '4ta', '5ta', '6ta'];
 

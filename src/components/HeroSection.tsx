@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+
 import { MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { fadeInUp, staggerContainer } from '../lib/animations';
@@ -8,32 +8,20 @@ interface HeroSectionProps {
 }
 
 export default function HeroSection({ onStartOnboarding }: HeroSectionProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    // Ensure video plays on mount
-    if (videoRef.current) {
-      videoRef.current.play().catch(() => {});
-    }
-  }, []);
 
   return (
     <section className="relative h-screen w-full overflow-hidden flex items-center justify-center">
-      {/* Video Background */}
-      <video
-        ref={videoRef}
-        autoPlay
-        muted
-        loop
-        playsInline
-        className="absolute inset-0 w-full h-full object-cover"
-        poster="https://images.unsplash.com/photo-1622279457486-640c43431653?q=80&w=1920&auto=format&fit=crop"
-      >
-        <source
-          src="https://videos.pexels.com/video-files/6253791/6253791-uhd_2560_1440_30fps.mp4"
-          type="video/mp4"
+      {/* Video Background (YouTube Embed) */}
+      <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
+        <iframe
+          className="absolute top-1/2 left-1/2 w-[100vw] h-[56.25vw] min-h-[100vh] min-w-[177.77vh] -translate-x-1/2 -translate-y-1/2 object-cover"
+          src="https://www.youtube.com/embed/xYo92xC3OWg?autoplay=1&mute=1&loop=1&playlist=xYo92xC3OWg&controls=0&disablekb=1&playsinline=1&modestbranding=1"
+          title="Padel Background"
+          frameBorder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
         />
-      </video>
+      </div>
 
       {/* Dark Cinematic Overlay */}
       <div className="absolute inset-0 bg-black/55 z-[1]" />
