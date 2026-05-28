@@ -12,21 +12,26 @@ interface MPLPlayer {
 }
 
 interface MPLMatch {
-  round: number;
-  matchNumber: number;
-  team1: [string, string]; // player IDs
-  team2: [string, string]; // player IDs
+  round: number; // 1 to 10
+  team1: [string, string]; // Lado A
+  team2: [string, string]; // Lado B
   score?: { t1: number; t2: number };
-  resting: string[]; // player IDs
+  resting: string[]; // Length 1 for 5 players
+  winnerSide?: 'A' | 'B';
+  exitSide?: 'A' | 'B';
+  playerExiting?: string;
+  playerEntering?: string;
+  selectionType?: 'auto' | 'manual';
+  intercalated?: boolean;
 }
 
 interface MPLTournament {
   id: number;
-  playerCount: number; // 5 or 6
+  playerCount: number; // Always 5 for this strict rule set
   players: MPLPlayer[];
   matches: MPLMatch[];
   currentRound: number;
-  pairPlayHistory: Record<string, number>; // "p1Id-p2Id" -> count as PARTNERS in current round
+  pairPlayHistory: Record<string, number>; // "p1Id-p2Id" -> count
 }
 
 export default function MicPadelLeagueView() {
@@ -101,141 +106,132 @@ export default function MicPadelLeagueView() {
   };
 
   // ===== UTILITY HELPERS =====
-
   const getPairKey = (id1: string, id2: string) => {
     return id1 < id2 ? `${id1}-${id2}` : `${id2}-${id1}`;
   };
 
-  const shuffle = <T,>(arr: T[]): T[] => {
-    const a = [...arr];
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
+  const getPlayerName = (id: string | undefined) => {
+    if (!id || !activeTournament) return '';
+    return activeTournament.players.find(p => p.id === id)?.name || '';
   };
 
+  // ===== MATCHMAKING & RULES ENGINE =====
 
-  const determineNextMatch = (
-    playerList: MPLPlayer[],
-    matches: MPLMatch[],
-    pairHistory: Record<string, number>,
-    manualRestingId: string | null,
-    count: 5 | 6
-  ): { nextMatch: MPLMatch; alertMessage: string | null } => {
-    const lastMatch = matches[matches.length - 1];
-    const score = lastMatch.score || { t1: 0, t2: 0 };
-    const currentMatchNum = matches.length + 1;
-    const roundNumber = lastMatch.round;
-
-    const winners = score.t1 > score.t2 ? [...lastMatch.team1] : [...lastMatch.team2];
-    const losers = score.t1 > score.t2 ? [...lastMatch.team2] : [...lastMatch.team1];
-    
-    let alertMessage: string | null = null;
-    let restingIds: string[] = [];
-
-    if (count === 5) {
-      if (manualRestingId) {
-        restingIds = [manualRestingId];
+  const getConsecutiveMatches = (playerId: string, matches: MPLMatch[]) => {
+    let count = 0;
+    for (let i = matches.length - 1; i >= 0; i--) {
+      const m = matches[i];
+      if (!m.score) continue;
+      if (m.team1.includes(playerId) || m.team2.includes(playerId)) {
+        count++;
       } else {
-        restingIds = [losers[Math.floor(Math.random() * 2)]];
+        break;
+      }
+    }
+    return count;
+  };
+
+  const getRestCount = (playerId: string, matches: MPLMatch[]) => {
+    return matches.filter(m => m.score && m.resting.includes(playerId)).length;
+  };
+
+  const evaluateExitCandidates = (
+    currentMatchIndex: number,
+    winnerSide: 'A' | 'B',
+    updatedMatches: MPLMatch[],
+    pairHistory: Record<string, number>
+  ) => {
+    const currentMatch = updatedMatches[currentMatchIndex];
+    let exitSide: 'A' | 'B';
+
+    // Detectar si algún jugador en cancha tiene 4 partidos seguidos (DEBE descansar)
+    const allOnCourt = [...currentMatch.team1, ...currentMatch.team2];
+    const playersWith4 = allOnCourt.filter(pid => getConsecutiveMatches(pid, updatedMatches) >= 4);
+
+    if (playersWith4.length > 0) {
+      // REGLA DE 4 CONSECUTIVOS MANDA: El jugador con 4 seguidos DEBE salir.
+      // Determinar en qué lado está ese jugador para forzar el exitSide.
+      const forcedPlayer = playersWith4[0];
+      if (currentMatch.team1.includes(forcedPlayer)) {
+        exitSide = 'A';
+      } else {
+        exitSide = 'B';
       }
     } else {
-      restingIds = [...losers];
+      // Rondas 1-5 (o cuando nadie tiene 4 seguidos): Usar alternancia estricta
+      if (currentMatchIndex === 0) {
+        exitSide = winnerSide === 'A' ? 'B' : 'A';
+      } else {
+        const lastMatch = updatedMatches[currentMatchIndex - 1];
+        exitSide = lastMatch.exitSide === 'A' ? 'B' : 'A';
+      }
     }
 
-    const allIds = playerList.map(p => p.id);
-    const courtPlayers = allIds.filter(id => !restingIds.includes(id));
+    const candidates = exitSide === 'A' ? [...currentMatch.team1] : [...currentMatch.team2];
+    const restingPlayer = currentMatch.resting[0]; // El que va a entrar
 
-    const winPairKey = getPairKey(winners[0], winners[1]);
-    const winnersOnCourt = winners.every(id => courtPlayers.includes(id));
+    const allHaveRestedOnce = activeTournament!.players.every(p => getRestCount(p.id, updatedMatches) > 0);
 
-    const [p1, p2, p3, p4] = courtPlayers;
-    const pairings: { team1: [string, string]; team2: [string, string] }[] = [
-      { team1: [p1, p2], team2: [p3, p4] },
-      { team1: [p1, p3], team2: [p2, p4] },
-      { team1: [p1, p4], team2: [p2, p3] }
-    ];
+    let rejectionReasons: Record<string, string> = {};
 
-    const unmetKeys = new Set(getUnmetPairs(playerList, pairHistory).map(([a, b]) => getPairKey(a, b)));
+    const validCandidates = candidates.filter(candId => {
+      const consecutive = getConsecutiveMatches(candId, updatedMatches);
+      const rests = getRestCount(candId, updatedMatches);
 
-    const scored = pairings.map(pairing => {
-      const k1 = getPairKey(pairing.team1[0], pairing.team1[1]);
-      const k2 = getPairKey(pairing.team2[0], pairing.team2[1]);
-      let pts = 0;
+      const otherCand = candidates.find(c => c !== candId)!;
+      const otherConsecutive = getConsecutiveMatches(otherCand, updatedMatches);
+      const otherRests = getRestCount(otherCand, updatedMatches);
 
-      if (winnersOnCourt) {
-        if (k1 === winPairKey || k2 === winPairKey) {
-          pts += 15;
-        }
+      // Prioridad 1: Si un jugador tiene 4 seguidos, DEBE ser él quien sale
+      if (otherConsecutive >= 4 && consecutive < 4) {
+        rejectionReasons[candId] = `${getPlayerName(otherCand)} tiene 4 seguidos y DEBE descansar.`;
+        return false;
+      }
+      if (consecutive >= 4) {
+        // Este jugador DEBE salir, así que es válido como candidato para salir
+        return true;
       }
 
-      if ((pairHistory[k1] || 0) < 2) pts += 5;
-      if ((pairHistory[k2] || 0) < 2) pts += 5;
+      // Prioridad 2: Ciclo de descansos (solo si no todos han descansado al menos una vez)
+      if (!allHaveRestedOnce && rests > 0 && otherRests === 0) {
+        rejectionReasons[candId] = `Ya descansó en este ciclo y ${getPlayerName(otherCand)} aún no.`;
+        return false;
+      }
 
-      if (unmetKeys.has(k1)) pts += 10;
-      if (unmetKeys.has(k2)) pts += 10;
+      // Prioridad 3: Límite de parejas
+      const futurePairKeyIfIStay = getPairKey(candId, restingPlayer);
+      if ((pairHistory[futurePairKeyIfIStay] || 0) >= 2) {
+        rejectionReasons[otherCand] = `Si sale ${getPlayerName(otherCand)}, se formaría pareja repetida (${getPlayerName(candId)} + ${getPlayerName(restingPlayer)}).`;
+      }
 
-      if ((pairHistory[k1] || 0) >= 2) pts -= 20;
-      if ((pairHistory[k2] || 0) >= 2) pts -= 20;
+      const futurePairKeyIfOtherStays = getPairKey(otherCand, restingPlayer);
+      if ((pairHistory[futurePairKeyIfOtherStays] || 0) >= 2) {
+        rejectionReasons[candId] = `Si te quedas, ${getPlayerName(otherCand)} formaría pareja repetida con ${getPlayerName(restingPlayer)}.`;
+        return false;
+      }
 
-      return { ...pairing, pts };
+      return true;
     });
 
-    scored.sort((a, b) => b.pts - a.pts);
-    const bestPts = scored[0].pts;
-    const best = scored.filter(p => p.pts === bestPts);
-    const chosen = best[Math.floor(Math.random() * best.length)];
-
-    return {
-      nextMatch: {
-        round: roundNumber,
-        matchNumber: currentMatchNum,
-        team1: chosen.team1,
-        team2: chosen.team2,
-        resting: restingIds
-      },
-      alertMessage
-    };
-  };
-
-  // Get pairs that still need more games together in this round
-  const getUnmetPairs = (playerList: MPLPlayer[], pairHistory: Record<string, number>): [string, string][] => {
-    const unmet: [string, string][] = [];
-    for (let i = 0; i < playerList.length; i++) {
-      for (let j = i + 1; j < playerList.length; j++) {
-        const key = getPairKey(playerList[i].id, playerList[j].id);
-        if ((pairHistory[key] || 0) < 2) {
-          unmet.push([playerList[i].id, playerList[j].id]);
-        }
-      }
+    if (validCandidates.length === 0) {
+      // Fallback: Si todas las reglas chocan, priorizar 4 seguidos
+      const with4 = candidates.filter(c => getConsecutiveMatches(c, updatedMatches) >= 4);
+      if (with4.length > 0) return { exitSide, validCandidates: with4, rejectionReasons };
+      return { exitSide, validCandidates: candidates, rejectionReasons };
     }
-    return unmet;
-  };
 
-  // ===== MATCHMAKING ALGORITHMS =====
+    return { exitSide, validCandidates, rejectionReasons };
+  };
 
   // Generate First Match of a round
-  const generateFirstMatch = (playerList: MPLPlayer[], count: 5 | 6, roundNumber: number, matchNum: number): MPLMatch => {
-    const shuffled = shuffle(playerList);
-
-    if (count === 5) {
-      return {
-        round: roundNumber,
-        matchNumber: matchNum,
-        team1: [shuffled[0].id, shuffled[1].id],
-        team2: [shuffled[2].id, shuffled[3].id],
-        resting: [shuffled[4].id]
-      };
-    } else {
-      return {
-        round: roundNumber,
-        matchNumber: matchNum,
-        team1: [shuffled[0].id, shuffled[1].id],
-        team2: [shuffled[2].id, shuffled[3].id],
-        resting: [shuffled[4].id, shuffled[5].id]
-      };
-    }
+  const generateFirstMatch = (playerList: MPLPlayer[]): MPLMatch => {
+    // Si queremos que SIEMPRE sea: A (1,2), B (3,4), Descansa: 5
+    return {
+      round: 1,
+      team1: [playerList[0].id, playerList[1].id],
+      team2: [playerList[2].id, playerList[3].id],
+      resting: [playerList[4].id]
+    };
   };
 
   // ===== EVENT HANDLERS =====
@@ -267,22 +263,21 @@ export default function MicPadelLeagueView() {
   };
 
   const handleStartTournament = () => {
-    if (players.length !== playerCount) {
-      alert(`Por favor registra exactamente ${playerCount} jugadores.`);
+    if (players.length !== 5) {
+      alert(`Por favor registra exactamente 5 jugadores.`);
       return;
     }
 
-    const firstMatch = generateFirstMatch(players, playerCount, 1, 1);
+    const firstMatch = generateFirstMatch(players);
     const newTourney: MPLTournament = {
       id: Date.now(),
-      playerCount,
+      playerCount: 5,
       players,
       matches: [firstMatch],
       currentRound: 1,
       pairPlayHistory: {}
     };
 
-    // Record pairs from first match
     const k1 = getPairKey(firstMatch.team1[0], firstMatch.team1[1]);
     const k2 = getPairKey(firstMatch.team2[0], firstMatch.team2[1]);
     newTourney.pairPlayHistory[k1] = 1;
@@ -290,31 +285,28 @@ export default function MicPadelLeagueView() {
 
     setActiveTournament(newTourney);
     setStage('active');
-    saveState('active', players, playerCount, newTourney);
+    saveState('active', players, 5, newTourney);
   };
 
   const [pendingBenchDecision, setPendingBenchDecision] = useState<{
-    winners: string[];
-    losers: string[];
-    count: 5 | 6;
-    nextHistory: Record<string, number>;
+    exitSide: 'A' | 'B';
+    candidates: string[];
+    validCandidates: string[];
+    rejectionReasons: Record<string, string>;
     updatedMatches: MPLMatch[];
-    winnersMustSplit: boolean;
-    losersMustSplit: boolean;
+    winnerSide: 'A' | 'B';
+    nextHistory: Record<string, number>;
   } | null>(null);
 
   const handleRegisterScore = () => {
-    if (!activeTournament || !currentMatch) return;
+    if (!activeTournament) return;
+    const currentMatch = activeTournament.matches[activeTournament.matches.length - 1];
+    
     const t1Score = parseInt(scoreT1);
     const t2Score = parseInt(scoreT2);
 
     if (isNaN(t1Score) || isNaN(t2Score) || t1Score < 0 || t2Score < 0) {
       setValidationError('Por favor ingresa un marcador válido (números positivos).');
-      return;
-    }
-
-    if (t1Score > 10 || t2Score > 10) {
-      setValidationError('El puntaje máximo por partido es de 10 puntos en la Mic Padel League.');
       return;
     }
 
@@ -325,137 +317,164 @@ export default function MicPadelLeagueView() {
 
     setValidationError(null);
 
+    const winnerSide = t1Score > t2Score ? 'A' : 'B';
+    
     const updatedMatches = [...activeTournament.matches];
     updatedMatches[updatedMatches.length - 1] = {
       ...currentMatch,
-      score: { t1: t1Score, t2: t2Score }
+      score: { t1: t1Score, t2: t2Score },
+      winnerSide
     };
 
-    let nextHistory = { ...activeTournament.pairPlayHistory };
-    const roundComplete = updatedMatches.filter(m => m.round === activeTournament.currentRound).length >= (activeTournament.playerCount === 5 ? 5 : 6);
+    const nextHistory = { ...activeTournament.pairPlayHistory };
+    
+    const { exitSide, validCandidates, rejectionReasons } = evaluateExitCandidates(
+      updatedMatches.length - 1, 
+      winnerSide, 
+      updatedMatches, 
+      nextHistory
+    );
 
-    if (roundComplete) {
-      const nextRoundNumber = activeTournament.currentRound + 1;
-      const nextHistoryNewRound: Record<string, number> = {};
-      
-      const nextMatch = generateFirstMatch(
-        activeTournament.players,
-        activeTournament.playerCount as 5 | 6,
-        nextRoundNumber,
-        updatedMatches.length + 1
-      );
-      
-      const k1 = getPairKey(nextMatch.team1[0], nextMatch.team1[1]);
-      const k2 = getPairKey(nextMatch.team2[0], nextMatch.team2[1]);
-      nextHistoryNewRound[k1] = 1;
-      nextHistoryNewRound[k2] = 1;
+    const allCandidates = exitSide === 'A' ? [...currentMatch.team1] : [...currentMatch.team2];
 
-      const updatedTourney = { 
-        ...activeTournament, 
-        matches: [...updatedMatches, nextMatch], 
-        pairPlayHistory: nextHistoryNewRound,
-        currentRound: nextRoundNumber 
-      };
+    // Mostrar UI manual siempre, según pedido del usuario ("no asignes automaticamente deja que yo eliga en todas las rondas")
+    setRotationAlert(null);
+    setPendingBenchDecision({
+      exitSide,
+      candidates: allCandidates,
+      validCandidates,
+      rejectionReasons,
+      updatedMatches,
+      winnerSide,
+      nextHistory
+    });
+  };
 
-      setActiveTournament(updatedTourney);
-      setScoreT1('');
-      setScoreT2('');
-      saveState('active', activeTournament.players, activeTournament.playerCount as 5 | 6, updatedTourney);
-      return;
-    }
+  const executeNextMatch = (
+    exitingPlayerId: string, 
+    exitSide: 'A' | 'B', 
+    winnerSide: 'A' | 'B',
+    selectionType: 'auto' | 'manual',
+    updatedMatches: MPLMatch[],
+    currentHistory: Record<string, number>
+  ) => {
+    if (!activeTournament) return;
 
-    const winners = t1Score > t2Score ? [...currentMatch.team1] : [...currentMatch.team2];
-    const losers = t1Score > t2Score ? [...currentMatch.team2] : [...currentMatch.team1];
+    const currentMatch = updatedMatches[updatedMatches.length - 1];
+    currentMatch.exitSide = exitSide;
+    currentMatch.playerExiting = exitingPlayerId;
+    currentMatch.playerEntering = currentMatch.resting[0];
+    currentMatch.selectionType = selectionType;
 
-    if (activeTournament.playerCount === 6) {
-      const { nextMatch, alertMessage } = determineNextMatch(
-        activeTournament.players,
-        updatedMatches,
-        nextHistory,
-        null,
-        6
-      );
+    const roundFinished = updatedMatches.length >= 10;
 
-      setRotationAlert(alertMessage);
-
-      const k1 = getPairKey(nextMatch.team1[0], nextMatch.team1[1]);
-      const k2 = getPairKey(nextMatch.team2[0], nextMatch.team2[1]);
-      nextHistory[k1] = (nextHistory[k1] || 0) + 1;
-      nextHistory[k2] = (nextHistory[k2] || 0) + 1;
-
-      const finalMatches = [...updatedMatches, nextMatch];
-
+    if (roundFinished) {
       const updatedTourney: MPLTournament = {
         ...activeTournament,
-        matches: finalMatches,
-        pairPlayHistory: nextHistory
+        matches: updatedMatches,
+        pairPlayHistory: currentHistory
       };
-
       setActiveTournament(updatedTourney);
       setScoreT1('');
       setScoreT2('');
       setPendingBenchDecision(null);
-      saveState('active', activeTournament.players, 6, updatedTourney);
+      setStage('finished');
+      setShowFinishModal(true);
+      saveState('finished', activeTournament.players, 5, updatedTourney);
       return;
     }
 
-    setRotationAlert(null);
-    setPendingBenchDecision({
-      winners,
-      losers,
-      count: activeTournament.playerCount as 5 | 6,
-      nextHistory,
-      updatedMatches,
-      winnersMustSplit: false,
-      losersMustSplit: false
-    });
-  };
+    // Generate next match
+    const nextRoundNumber = updatedMatches.length + 1;
+    let nextTeam1: [string, string] = [...currentMatch.team1];
+    let nextTeam2: [string, string] = [...currentMatch.team2];
 
-  const executeNextMatch = (manualResting: string[]) => {
-    if (!activeTournament || !pendingBenchDecision) return;
+    if (exitSide === 'A') {
+      nextTeam1 = [nextTeam1.find(id => id !== exitingPlayerId)!, currentMatch.resting[0]] as [string, string];
+    } else {
+      nextTeam2 = [nextTeam2.find(id => id !== exitingPlayerId)!, currentMatch.resting[0]] as [string, string];
+    }
 
-    // Generate the next match based on manual resting player
-    const { nextMatch, alertMessage } = determineNextMatch(
-      activeTournament.players,
-      pendingBenchDecision.updatedMatches,
-      pendingBenchDecision.nextHistory,
-      manualResting[0],
-      activeTournament.playerCount as 5 | 6
-    );
+    let intercalated = false;
+    const k1Check = getPairKey(nextTeam1[0], nextTeam1[1]);
+    const k2Check = getPairKey(nextTeam2[0], nextTeam2[1]);
 
-    setRotationAlert(alertMessage);
+    if ((currentHistory[k1Check] || 0) >= 2 || (currentHistory[k2Check] || 0) >= 2) {
+      intercalated = true;
+      const [p1, p2] = nextTeam1;
+      const [p3, p4] = nextTeam2;
 
-    const nextHistory = { ...pendingBenchDecision.nextHistory };
+      const pairings = [
+        { t1: [p1, p2], t2: [p3, p4] },
+        { t1: [p1, p3], t2: [p2, p4] },
+        { t1: [p1, p4], t2: [p2, p3] }
+      ];
+
+      let bestPairing = pairings[0];
+      let maxScore = -999;
+
+      for (const pairing of pairings) {
+        const pk1 = getPairKey(pairing.t1[0], pairing.t1[1]);
+        const pk2 = getPairKey(pairing.t2[0], pairing.t2[1]);
+        const count1 = currentHistory[pk1] || 0;
+        const count2 = currentHistory[pk2] || 0;
+
+        let score = 0;
+        if (count1 >= 2) score -= 100;
+        if (count2 >= 2) score -= 100;
+        
+        if (count1 === 0) score += 10;
+        if (count2 === 0) score += 10;
+
+        if (pairing === pairings[0]) score += 5;
+
+        if (score > maxScore) {
+          maxScore = score;
+          bestPairing = pairing;
+        }
+      }
+
+      nextTeam1 = bestPairing.t1 as [string, string];
+      nextTeam2 = bestPairing.t2 as [string, string];
+    }
+
+    const nextMatch: MPLMatch = {
+      round: nextRoundNumber,
+      team1: nextTeam1,
+      team2: nextTeam2,
+      resting: [exitingPlayerId],
+      intercalated
+    };
+
     const k1 = getPairKey(nextMatch.team1[0], nextMatch.team1[1]);
     const k2 = getPairKey(nextMatch.team2[0], nextMatch.team2[1]);
-    nextHistory[k1] = (nextHistory[k1] || 0) + 1;
-    nextHistory[k2] = (nextHistory[k2] || 0) + 1;
+    currentHistory[k1] = (currentHistory[k1] || 0) + 1;
+    currentHistory[k2] = (currentHistory[k2] || 0) + 1;
 
-    const nextMatches = [...pendingBenchDecision.updatedMatches, nextMatch];
+    const nextMatches = [...updatedMatches, nextMatch];
 
     const updatedTourney: MPLTournament = {
       ...activeTournament,
       matches: nextMatches,
-      pairPlayHistory: nextHistory
+      pairPlayHistory: currentHistory,
+      currentRound: nextRoundNumber
     };
 
     setActiveTournament(updatedTourney);
     setScoreT1('');
     setScoreT2('');
     setPendingBenchDecision(null);
-    saveState('active', activeTournament.players, activeTournament.playerCount as 5 | 6, updatedTourney);
+    saveState('active', activeTournament.players, 5, updatedTourney);
   };
 
   const handleFinishTournament = () => {
     if (!activeTournament) return;
     setStage('finished');
     setShowFinishModal(true);
-    saveState('finished', activeTournament.players, activeTournament.playerCount as 5 | 6, activeTournament);
+    saveState('finished', activeTournament.players, 5, activeTournament);
   };
 
   // ===== COMPUTED VALUES =====
-
-  // Calculate Standings
   const getStandings = () => {
     if (!activeTournament) return [];
 
@@ -474,7 +493,6 @@ export default function MicPadelLeagueView() {
 
     activeTournament.matches.forEach(m => {
       if (!m.score) return;
-
       const team1Won = m.score.t1 > m.score.t2;
 
       m.team1.forEach(pId => {
@@ -503,78 +521,46 @@ export default function MicPadelLeagueView() {
     stats.forEach(s => { s.diff = s.pointsWon - s.pointsLost; });
 
     return stats.sort((a, b) => {
+      // 1. Número de victorias
       if (b.wins !== a.wins) return b.wins - a.wins;
+      // 2. Diferencia de puntos
       if (b.diff !== a.diff) return b.diff - a.diff;
-      return b.pointsWon - a.pointsWon;
+      // 3. Puntos a favor
+      if (b.pointsWon !== a.pointsWon) return b.pointsWon - a.pointsWon;
+      // 4. Puntos en contra (menos es mejor)
+      return a.pointsLost - b.pointsLost;
     });
   };
 
-  // Get pair summary per round
-  const getRoundPairSummary = () => {
-    if (!activeTournament) return [];
+  const getTournamentStats = () => {
+    if (!activeTournament) return { rests: {}, pairs: [] };
+    const rests: Record<string, number> = {};
+    const pairCounts: Record<string, number> = {};
 
-    const rounds: { roundNumber: number; pairs: { p1Name: string; p2Name: string; count: number }[] }[] = [];
+    activeTournament.players.forEach(p => rests[p.id] = 0);
 
-    // Group scored matches by round
-    const matchesByRound: Record<number, MPLMatch[]> = {};
     activeTournament.matches.forEach(m => {
-      if (!m.score) return;
-      if (!matchesByRound[m.round]) matchesByRound[m.round] = [];
-      matchesByRound[m.round].push(m);
+      if (m.score) {
+        m.resting.forEach(id => rests[id]++);
+        const k1 = getPairKey(m.team1[0], m.team1[1]);
+        const k2 = getPairKey(m.team2[0], m.team2[1]);
+        pairCounts[k1] = (pairCounts[k1] || 0) + 1;
+        pairCounts[k2] = (pairCounts[k2] || 0) + 1;
+      }
     });
 
-    const playerName = (id: string) => activeTournament.players.find(p => p.id === id)?.name || id;
+    const pairs = Object.entries(pairCounts).map(([key, count]) => {
+      const [id1, id2] = key.split('-');
+      return { p1Name: getPlayerName(id1), p2Name: getPlayerName(id2), count };
+    });
 
-    Object.keys(matchesByRound)
-      .map(Number)
-      .sort((a, b) => a - b)
-      .forEach(roundNum => {
-        const roundMatches = matchesByRound[roundNum];
-        const pairCounts: Record<string, number> = {};
-
-        roundMatches.forEach(m => {
-          const k1 = getPairKey(m.team1[0], m.team1[1]);
-          const k2 = getPairKey(m.team2[0], m.team2[1]);
-          pairCounts[k1] = (pairCounts[k1] || 0) + 1;
-          pairCounts[k2] = (pairCounts[k2] || 0) + 1;
-        });
-
-        const pairs = Object.entries(pairCounts).map(([key, count]) => {
-          const [id1, id2] = key.split('-');
-          return {
-            p1Name: playerName(id1),
-            p2Name: playerName(id2),
-            count
-          };
-        });
-
-        // Sort: pairs with fewer games first (to highlight who still needs to play)
-        pairs.sort((a, b) => a.count - b.count);
-
-        rounds.push({ roundNumber: roundNum, pairs });
-      });
-
-    return rounds;
-  };
-
-  // Get progress for current round (matches played out of 5 or 6)
-  const getRoundProgress = () => {
-    if (!activeTournament) return { met: 0, total: 5 };
-    const total = activeTournament.playerCount === 5 ? 5 : 6;
-    const met = activeTournament.matches.filter(m => m.round === activeTournament.currentRound && m.score).length;
-    return { met, total };
+    return { rests, pairs };
   };
 
   const standings = getStandings();
   const currentMatch = activeTournament?.matches[activeTournament.matches.length - 1];
+  const isRoundComplete = activeTournament ? activeTournament.matches.filter(m => m.score).length >= 10 : false;
   
-  const isRoundComplete = activeTournament 
-    ? activeTournament.matches.filter(m => m.round === activeTournament.currentRound && m.score).length >= (activeTournament.playerCount === 5 ? 5 : 6)
-    : false;
-  
-  const roundProgress = getRoundProgress();
-  const roundPairSummary = getRoundPairSummary();
-
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto w-full">
       <AnimatePresence mode="wait">
@@ -600,39 +586,24 @@ export default function MicPadelLeagueView() {
               </div>
             </div>
 
-            <div className="border-t border-slate-800/80 my-2 pt-6">
+            <div className="border-t border-slate-800/80 my-2 pt-6 flex flex-col items-center">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest text-center block mb-4">
-                ¿Cuántos jugadores participan hoy?
+                Formato Estricto Activo
               </label>
               
-              <div className="grid grid-cols-2 gap-4">
-                {[5, 6].map(num => (
-                  <button
-                    key={num}
-                    onClick={() => setPlayerCount(num as any)}
-                    className={`flex flex-col items-center justify-center p-6 rounded-2xl border transition-all duration-300 gap-3 group relative overflow-hidden ${
-                      playerCount === num 
-                        ? 'bg-emerald-600/10 border-emerald-500/50 shadow-lg shadow-emerald-950/20' 
-                        : 'bg-slate-950/40 border-slate-800 hover:border-slate-700 hover:bg-slate-950/70'
-                    }`}
-                  >
-                    {playerCount === num && (
-                      <span className="absolute top-3 right-3 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                    )}
-                    <Users className={`w-8 h-8 ${playerCount === num ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-300'}`} />
-                    <span className="text-2xl font-black text-white">{num} Jugadores</span>
-                    <span className="text-xs text-slate-500 group-hover:text-slate-400">
-                      {num === 5 ? '1 Cancha (4 juegan, 1 descansa)' : '1 Cancha (4 juegan, 2 descansan)'}
-                    </span>
-                  </button>
-                ))}
+              <div className="flex flex-col items-center justify-center p-6 rounded-2xl border border-emerald-500/50 bg-emerald-600/10 shadow-lg shadow-emerald-950/20 w-full">
+                <Users className="w-8 h-8 text-emerald-400 mb-3" />
+                <span className="text-2xl font-black text-white">5 Jugadores</span>
+                <span className="text-xs text-slate-400 mt-1">
+                  1 Cancha (4 juegan, 1 descansa). Reglas de alternancia y ciclos de descanso automáticos (10 partidos).
+                </span>
               </div>
             </div>
 
             <button
               onClick={() => {
                 setStage('registration');
-                saveState('registration', players, playerCount, activeTournament);
+                saveState('registration', players, 5, activeTournament);
               }}
               className="mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-emerald-900/30 flex items-center justify-center gap-2 group text-sm uppercase tracking-widest"
             >
@@ -659,7 +630,7 @@ export default function MicPadelLeagueView() {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-white">Inscribir Jugadores</h3>
-                  <p className="text-xs text-slate-500">Torneo de {playerCount} jugadores</p>
+                  <p className="text-xs text-slate-500">Formato Estricto: 5 jugadores</p>
                 </div>
               </div>
 
@@ -673,7 +644,7 @@ export default function MicPadelLeagueView() {
                     value={newPlayerName}
                     onChange={(e) => setNewPlayerName(e.target.value)}
                     placeholder="Ej. Juan Pérez"
-                    disabled={players.length >= playerCount}
+                    disabled={players.length >= 5}
                     required
                     className="w-full bg-slate-950/50 border border-slate-800 disabled:opacity-40 focus:border-emerald-500 focus:outline-none rounded-xl py-3 px-4 text-white placeholder:text-slate-600 transition-all text-sm"
                   />
@@ -681,21 +652,13 @@ export default function MicPadelLeagueView() {
 
                 <button
                   type="submit"
-                  disabled={players.length >= playerCount}
+                  disabled={players.length >= 5}
                   className="w-full bg-emerald-600/90 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 text-xs uppercase tracking-wider"
                 >
                   <Plus className="w-4 h-4" />
                   Agregar Jugador
                 </button>
               </form>
-
-              <div className="bg-slate-950/30 rounded-xl p-4 border border-slate-800/40 mt-2 flex items-start gap-3">
-                <Info className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Para este formato de la Mic Padel League necesitas registrar exactamente <strong className="text-emerald-400">{playerCount} jugadores</strong>. 
-                  La ronda acaba cuando todos hayan jugado 2 veces como pareja con cada jugador.
-                </p>
-              </div>
             </div>
 
             {/* List and Actions card */}
@@ -704,18 +667,9 @@ export default function MicPadelLeagueView() {
                 <h3 className="text-lg font-bold text-white flex items-center gap-3">
                   Jugadores Registrados
                   <span className="bg-slate-800 text-slate-300 text-xs font-bold px-3 py-1 rounded-full border border-slate-700/60">
-                    {players.length} / {playerCount}
+                    {players.length} / 5
                   </span>
                 </h3>
-                <button
-                  onClick={() => {
-                    setStage('config');
-                    saveState('config', players, playerCount, activeTournament);
-                  }}
-                  className="text-xs text-slate-400 hover:text-white transition-colors"
-                >
-                  Cambiar Formato
-                </button>
               </div>
 
               <div className="min-h-[220px] bg-slate-950/30 rounded-2xl border border-slate-800/50 flex flex-col overflow-hidden">
@@ -757,7 +711,7 @@ export default function MicPadelLeagueView() {
 
               <button
                 onClick={handleStartTournament}
-                disabled={players.length !== playerCount}
+                disabled={players.length !== 5}
                 className="w-full bg-emerald-600 disabled:bg-slate-800 disabled:text-slate-500 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 text-sm uppercase tracking-widest mt-2"
               >
                 <Play className="w-4 h-4 fill-current" />
@@ -784,24 +738,24 @@ export default function MicPadelLeagueView() {
                 </div>
                 <div>
                   <h3 className="text-md font-bold text-white uppercase tracking-wider">
-                    Mic Padel League ({activeTournament.playerCount} Jugadores)
+                    Mic Padel League
                   </h3>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                     <span className="text-xs text-slate-400">
-                      Ronda {activeTournament.currentRound} — Partido #{activeTournament.matches.length} — Parejas completas: {roundProgress.met}/{roundProgress.total}
+                      Ronda {activeTournament.matches.length} de 10
                     </span>
                   </div>
                 </div>
               </div>
               <div className="flex gap-2 w-full md:w-auto">
-                {stage === 'active' && (
+                {stage === 'active' && isRoundComplete && (
                   <button
                     onClick={handleFinishTournament}
-                    className="flex-1 md:flex-none px-4 py-2 border border-amber-500/20 text-amber-400 bg-amber-500/5 hover:bg-amber-500/10 hover:border-amber-500/40 rounded-xl transition-all text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2"
+                    className="flex-1 md:flex-none px-4 py-2 border border-emerald-500/50 text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-xl transition-all text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2"
                   >
                     <Flag className="w-3.5 h-3.5" />
-                    Terminar Torneo
+                    Ver Podio
                   </button>
                 )}
                 <button
@@ -813,26 +767,6 @@ export default function MicPadelLeagueView() {
                 </button>
               </div>
             </div>
-
-            {/* Round progress bar */}
-            {stage === 'active' && (
-              <div className="bg-slate-900/40 border border-slate-800/60 rounded-2xl p-4 flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Progreso de Ronda {activeTournament.currentRound}</span>
-                  <span className="text-xs font-mono text-emerald-400 font-bold">
-                    {roundProgress.met}/{roundProgress.total} parejas completas
-                  </span>
-                </div>
-                <div className="w-full h-2.5 bg-slate-950/60 rounded-full overflow-hidden border border-slate-800/40">
-                  <motion.div
-                    className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-full"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${roundProgress.total > 0 ? (roundProgress.met / roundProgress.total) * 100 : 0}%` }}
-                    transition={{ duration: 0.5, ease: 'easeOut' }}
-                  />
-                </div>
-              </div>
-            )}
 
             {/* UNIFIED CONTAINER CARD */}
             <div className="bg-slate-900/40 border border-slate-800/80 rounded-3xl shadow-2xl overflow-hidden flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-slate-850">
@@ -846,26 +780,7 @@ export default function MicPadelLeagueView() {
                   <h4 className="text-sm font-bold text-slate-300 uppercase tracking-widest">Partido en Curso</h4>
                 </div>
 
-                {rotationAlert && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-xl p-4 flex items-start gap-3 shadow-md relative"
-                  >
-                    <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
-                    <div className="text-xs font-semibold leading-relaxed flex-1">
-                      {rotationAlert}
-                    </div>
-                    <button
-                      onClick={() => setRotationAlert(null)}
-                      className="text-amber-400/60 hover:text-amber-400 transition-colors shrink-0"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </motion.div>
-                )}
-
-                {stage === 'active' && currentMatch && (
+                {stage === 'active' && currentMatch && !isRoundComplete && (
                   pendingBenchDecision ? (
                     // --- MANUAL BENCH SELECTION UI ---
                     <div className="bg-slate-900/60 border border-emerald-500/30 p-6 rounded-2xl flex flex-col gap-6 relative overflow-hidden shadow-xl">
@@ -877,48 +792,69 @@ export default function MicPadelLeagueView() {
                         </div>
                         <div>
                           <h4 className="text-sm font-bold text-white mb-1">
-                            Rotación de Perdedores
+                            Selección de Rotación
                           </h4>
                           <p className="text-xs text-slate-400 leading-relaxed">
-                            Elige quién del equipo perdedor irá a la banca. Los ganadores se quedarán jugando juntos.
+                            Por la regla de alternancia, debe salir un jugador del <strong>Lado {pendingBenchDecision.exitSide}</strong>.
+                            Elige cuál de los dos jugadores irá a la banca.
                           </p>
                         </div>
                       </div>
 
                       <div className="flex flex-col gap-3 mt-2">
                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                          Selecciona qué jugador de la pareja PERDEDORA descansa:
+                          Candidatos a salir (Lado {pendingBenchDecision.exitSide}):
                         </span>
                         <div className="grid grid-cols-2 gap-3">
-                          {pendingBenchDecision.losers.map(playerId => {
+                          {pendingBenchDecision.candidates.map(playerId => {
                             const player = activeTournament.players.find(p => p.id === playerId);
+                            const isValid = pendingBenchDecision.validCandidates.includes(playerId);
+                            const reason = pendingBenchDecision.rejectionReasons[playerId];
+
                             return (
                               <button
                                 key={playerId}
+                                disabled={!isValid}
                                 onClick={() => {
-                                  let finalResting = [playerId];
-                                  if (pendingBenchDecision.count === 6) {
-                                    finalResting = [...pendingBenchDecision.losers];
-                                  }
-                                  executeNextMatch(finalResting);
+                                  executeNextMatch(
+                                    playerId, 
+                                    pendingBenchDecision.exitSide, 
+                                    pendingBenchDecision.winnerSide, 
+                                    'manual',
+                                    pendingBenchDecision.updatedMatches,
+                                    pendingBenchDecision.nextHistory
+                                  );
                                 }}
-                                className="bg-slate-950 border border-slate-800 hover:border-emerald-500/50 hover:bg-emerald-500/10 transition-all p-4 rounded-xl flex flex-col items-center gap-2 group"
+                                className={`border transition-all p-3 rounded-xl flex flex-col items-center justify-center gap-2 relative overflow-hidden ${
+                                  isValid
+                                    ? 'bg-slate-950 border-slate-700 hover:border-emerald-500/50 hover:bg-emerald-500/10 shadow-lg cursor-pointer group'
+                                    : 'bg-slate-950/20 border-slate-800/30 opacity-50 cursor-not-allowed'
+                                }`}
                               >
-                                <div className="w-10 h-10 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center group-hover:bg-emerald-500/20 group-hover:border-emerald-500/40">
-                                  <User className="w-5 h-5 text-slate-400 group-hover:text-emerald-400" />
+                                {!isValid && reason && (
+                                  <div className="absolute top-0 w-full bg-slate-800 text-slate-300 text-[8px] font-black py-0.5 text-center shadow-md">
+                                    REGLA APLICADA
+                                  </div>
+                                )}
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center border transition-colors ${
+                                  isValid 
+                                    ? 'mt-2 bg-slate-900 border-slate-700 text-slate-400 group-hover:bg-emerald-500/20 group-hover:border-emerald-500/40 group-hover:text-emerald-400'
+                                    : 'mt-2 bg-slate-900 border-slate-800 text-slate-600'
+                                }`}>
+                                  <User className="w-5 h-5" />
                                 </div>
-                                <span className="text-sm font-bold text-white group-hover:text-emerald-400">
+                                <span className={`text-sm font-bold text-center ${isValid ? 'text-white group-hover:text-emerald-400' : 'text-slate-500'}`}>
                                   {player?.name}
                                 </span>
+                                {!isValid && reason && (
+                                  <span className="text-[9px] text-slate-400 text-center leading-tight mt-1 px-1">
+                                    {reason}
+                                  </span>
+                                )}
                               </button>
                             );
                           })}
                         </div>
-                        {pendingBenchDecision.count === 6 && (
-                          <div className="mt-2 text-center text-[10px] text-slate-500 italic">
-                            En formato de 6 jugadores, ambos perdedores irán a la banca. Haz clic en cualquiera para continuar.
-                          </div>
-                        )}
                       </div>
                     </div>
                   ) : (
@@ -929,15 +865,15 @@ export default function MicPadelLeagueView() {
                       {/* Visual Arena representation */}
                       <div className="flex flex-col gap-4 relative z-10">
                         
-                        {/* Team 1 Card */}
+                        {/* Team A Card */}
                         <div className="bg-slate-900/85 border border-slate-800/80 p-4 rounded-xl flex items-center justify-between hover:border-emerald-500/20 transition-all">
                           <div className="flex flex-col gap-1.5">
-                            <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider">Pareja A</span>
+                            <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider">Lado A</span>
                             <div className="text-md font-bold text-white">
-                              {activeTournament.players.find(p => p.id === currentMatch.team1[0])?.name}
+                              {getPlayerName(currentMatch.team1[0])}
                             </div>
                             <div className="text-md font-bold text-white">
-                              {activeTournament.players.find(p => p.id === currentMatch.team1[1])?.name}
+                              {getPlayerName(currentMatch.team1[1])}
                             </div>
                           </div>
                           <input
@@ -946,7 +882,7 @@ export default function MicPadelLeagueView() {
                             value={scoreT1}
                             onChange={(e) => setScoreT1(e.target.value)}
                             placeholder="0"
-                            className="w-16 h-16 bg-slate-950/80 border border-slate-700/60 rounded-xl text-center text-3xl font-black text-white focus:outline-none focus:border-emerald-500 focus:bg-slate-950 transition-all placeholder:text-slate-800 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            className="w-16 h-16 bg-slate-950/80 border border-slate-700/60 rounded-xl text-center text-3xl font-black text-white focus:outline-none focus:border-emerald-500 focus:bg-slate-950 transition-all placeholder:text-slate-800"
                           />
                         </div>
 
@@ -957,15 +893,15 @@ export default function MicPadelLeagueView() {
                           </div>
                         </div>
 
-                        {/* Team 2 Card */}
+                        {/* Team B Card */}
                         <div className="bg-slate-900/85 border border-slate-800/80 p-4 rounded-xl flex items-center justify-between hover:border-emerald-500/20 transition-all">
                           <div className="flex flex-col gap-1.5">
-                            <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider">Pareja B</span>
+                            <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider">Lado B</span>
                             <div className="text-md font-bold text-white">
-                              {activeTournament.players.find(p => p.id === currentMatch.team2[0])?.name}
+                              {getPlayerName(currentMatch.team2[0])}
                             </div>
                             <div className="text-md font-bold text-white">
-                              {activeTournament.players.find(p => p.id === currentMatch.team2[1])?.name}
+                              {getPlayerName(currentMatch.team2[1])}
                             </div>
                           </div>
                           <input
@@ -974,7 +910,7 @@ export default function MicPadelLeagueView() {
                             value={scoreT2}
                             onChange={(e) => setScoreT2(e.target.value)}
                             placeholder="0"
-                            className="w-16 h-16 bg-slate-950/80 border border-slate-700/60 rounded-xl text-center text-3xl font-black text-white focus:outline-none focus:border-emerald-500 focus:bg-slate-950 transition-all placeholder:text-slate-800 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            className="w-16 h-16 bg-slate-950/80 border border-slate-700/60 rounded-xl text-center text-3xl font-black text-white focus:outline-none focus:border-emerald-500 focus:bg-slate-950 transition-all placeholder:text-slate-800"
                           />
                         </div>
 
@@ -1008,14 +944,13 @@ export default function MicPadelLeagueView() {
                     </label>
                     <div className="flex flex-wrap gap-2.5">
                       {currentMatch.resting.map(restingId => {
-                        const player = activeTournament.players.find(p => p.id === restingId);
                         return (
                           <span
                             key={restingId}
                             className="bg-slate-900 border border-slate-800 px-3 py-2 rounded-xl text-xs font-semibold text-slate-400 flex items-center gap-2"
                           >
                             <span className="w-1.5 h-1.5 rounded-full bg-yellow-500" />
-                            {player?.name}
+                            {getPlayerName(restingId)}
                           </span>
                         );
                       })}
@@ -1024,7 +959,7 @@ export default function MicPadelLeagueView() {
                 )}
 
                 {/* FINISHED STATE */}
-                {stage === 'finished' && !showFinishModal && (
+                {isRoundComplete && !showFinishModal && (
                   <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-8 flex flex-col items-center justify-center text-center gap-4">
                     <div className="w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shadow-md">
                       <Award className="w-7 h-7" />
@@ -1032,249 +967,157 @@ export default function MicPadelLeagueView() {
                     <div>
                       <h4 className="text-lg font-bold text-white">Torneo Finalizado</h4>
                       <p className="text-xs text-slate-400 max-w-xs mt-1 leading-relaxed">
-                        ¡Felicitaciones! Revisa el podio a la derecha.
+                        ¡Las 10 rondas se han completado! Revisa las posiciones y la tabla de rotaciones a la derecha.
                       </p>
                     </div>
-                    <button
-                      onClick={handleResetTournament}
-                      className="mt-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold uppercase tracking-wider py-2.5 px-6 rounded-xl transition-all"
-                    >
-                      Crear Nuevo Torneo
-                    </button>
                   </div>
                 )}
+              </div>
 
-                {/* Match History feed */}
-                <div className="flex flex-col gap-3 mt-2 border-t border-slate-850 pt-4">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">
-                    Historial de Partidos (Últimos 6)
-                  </label>
-                  <div className="flex flex-col gap-2">
-                    {activeTournament.matches
-                      .filter(m => m.score)
-                      .reverse()
-                      .slice(0, 6)
-                      .map((m) => (
-                      <div 
-                        key={m.matchNumber}
-                        className="bg-slate-950/20 border border-slate-900 p-3.5 rounded-xl flex items-center justify-between text-xs hover:bg-slate-950/40 transition-colors"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold bg-slate-850 text-slate-400 px-1.5 py-0.5 rounded">
-                            # {m.matchNumber}
+              {/* RIGHT SIDE: HISTORIAL Y ESTADÍSTICAS */}
+              <div className="w-full lg:w-1/2 p-0 flex flex-col h-[700px]">
+                
+                {/* Tabs */}
+                <div className="flex items-center border-b border-slate-800/80">
+                  <div className="flex-1 text-center py-4 border-b-2 border-emerald-500 text-emerald-400 text-xs font-bold uppercase tracking-widest cursor-pointer bg-emerald-500/5">
+                    Historial de Rondas
+                  </div>
+                  <div className="flex-1 text-center py-4 border-b-2 border-transparent text-slate-500 text-xs font-bold uppercase tracking-widest hover:text-slate-300 transition-colors cursor-pointer opacity-50">
+                    Posiciones
+                  </div>
+                </div>
+
+                <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
+                  <div className="flex flex-col gap-4">
+                    {activeTournament.matches.filter(m => m.score).map((m, i) => (
+                      <div key={i} className="bg-slate-950/40 border border-slate-800/60 p-4 rounded-xl flex flex-col gap-3">
+                        <div className="flex items-center justify-between border-b border-slate-800/60 pb-2">
+                          <span className="text-xs font-black text-emerald-400 uppercase tracking-widest">
+                            Ronda {m.round}
                           </span>
-                          <span className="text-[10px] text-slate-600">R{m.round}</span>
-                          <span className="text-slate-400">
-                            {activeTournament.players.find(p => p.id === m.team1[0])?.name.split(' ')[0]} / {activeTournament.players.find(p => p.id === m.team1[1])?.name.split(' ')[0]}
-                          </span>
-                          <span className="text-slate-500">vs</span>
-                          <span className="text-slate-400">
-                            {activeTournament.players.find(p => p.id === m.team2[0])?.name.split(' ')[0]} / {activeTournament.players.find(p => p.id === m.team2[1])?.name.split(' ')[0]}
+                          <span className="text-[10px] font-bold text-slate-400 bg-slate-900 px-2 py-1 rounded-md border border-slate-800">
+                            {m.score?.t1} - {m.score?.t2}
                           </span>
                         </div>
-                        <div className="font-mono font-black text-emerald-400 text-sm">
-                          {m.score?.t1} – {m.score?.t2}
+                        
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Lado A</span>
+                            <span className="text-white">{getPlayerName(m.team1[0])} / {getPlayerName(m.team1[1])}</span>
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Lado B</span>
+                            <span className="text-white">{getPlayerName(m.team2[0])} / {getPlayerName(m.team2[1])}</span>
+                          </div>
+                        </div>
+
+                        <div className="bg-slate-900/50 rounded-lg p-2.5 mt-1 border border-slate-800/40">
+                          <div className="flex items-center justify-between text-xs mb-1.5">
+                            <span className="text-[10px] text-slate-500 uppercase font-bold">Ganador:</span>
+                            <span className="text-emerald-400 font-bold">Lado {m.winnerSide}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs mb-1.5">
+                            <span className="text-[10px] text-slate-500 uppercase font-bold">Lado de salida:</span>
+                            <span className="text-amber-400 font-bold">Lado {m.exitSide}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-[10px] text-slate-500 uppercase font-bold">Intercambio:</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-red-400 font-bold line-through">{getPlayerName(m.playerExiting)}</span>
+                              <RefreshCw className="w-3 h-3 text-slate-600" />
+                              <span className="text-emerald-400 font-bold">{getPlayerName(m.playerEntering)}</span>
+                            </div>
+                          </div>
+                          {m.intercalated && (
+                            <div className="mt-2 text-[9px] text-amber-400 font-bold italic text-right">
+                              Parejas intercaladas automáticamente (Límite 2 alcanzado)
+                            </div>
+                          )}
+                          {m.selectionType && (
+                            <div className="mt-1 text-[9px] text-slate-500 italic text-right">
+                              Selección {m.selectionType === 'auto' ? 'Automática (Reglas)' : 'Manual'}
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
+                    
                     {activeTournament.matches.filter(m => m.score).length === 0 && (
-                      <span className="text-xs text-slate-600 pl-1">Aún no hay partidos terminados.</span>
+                      <div className="text-center text-slate-500 text-sm py-8 italic">
+                        Juega la primera ronda para ver el historial.
+                      </div>
                     )}
                   </div>
                 </div>
 
-              </div>
-
-              {/* RIGHT SIDE: STANDINGS */}
-              <div className="w-full lg:w-1/2 p-6 flex flex-col gap-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
-                      <Trophy className="w-4 h-4 text-emerald-400" />
+                {/* STANDINGS RE-ADDED */}
+                <div className="border-t border-slate-800/80 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-6 h-6 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                        <Trophy className="w-3.5 h-3.5 text-emerald-400" />
+                      </div>
+                      <h4 className="text-xs font-bold text-slate-300 uppercase tracking-widest">Posiciones Individuales</h4>
                     </div>
-                    <h4 className="text-sm font-bold text-slate-300 uppercase tracking-widest">Posiciones Individuales</h4>
                   </div>
-                  <span className="text-[10px] font-black uppercase text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full">
-                    Por Partidos Ganados
-                  </span>
-                </div>
 
-                <div className="bg-slate-950/30 rounded-2xl border border-slate-800/60 overflow-x-auto">
-                  <table className="w-full text-left border-collapse min-w-[500px]">
-                    <thead className="bg-slate-950/80 border-b border-slate-800/80 text-[10px] uppercase tracking-widest text-slate-500 font-black">
-                      <tr>
-                        <th className="py-3 px-4 text-center w-12">#</th>
-                        <th className="py-3 px-2">Jugador</th>
-                        <th className="py-3 px-2 text-center w-14">PG</th>
-                        <th className="py-3 px-2 text-center w-12">PJ</th>
-                        <th className="py-3 px-2 text-center w-14">PP</th>
-                        <th className="py-3 px-2 text-center w-18">Pts+</th>
-                        <th className="py-3 px-4 text-center w-16">Dif</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {standings.map((s, idx) => {
-                        const isLeader = idx === 0;
-                        const isRunnerUp = idx === 1;
-                        return (
-                          <tr 
-                            key={s.id}
-                            className={`border-b border-slate-900/50 hover:bg-slate-800/10 transition-colors ${
-                              isLeader ? 'bg-emerald-500/[0.02]' : ''
-                            }`}
-                          >
-                            <td className="py-3.5 px-4 text-center">
-                              {isLeader ? (
-                                <span className="w-6 h-6 rounded-full bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 flex items-center justify-center mx-auto text-xs font-black shadow-md shadow-yellow-950/10">
-                                  🥇
-                                </span>
-                              ) : isRunnerUp ? (
-                                <span className="w-6 h-6 rounded-full bg-slate-300/10 border border-slate-300/30 text-slate-300 flex items-center justify-center mx-auto text-xs font-black">
-                                  🥈
-                                </span>
-                              ) : (
-                                <span className="text-xs font-bold text-slate-500">
-                                  {idx + 1}
-                                </span>
-                              )}
-                            </td>
-                            <td className="py-3.5 px-2">
-                              <span className={`text-sm font-semibold ${isLeader ? 'text-emerald-300 font-bold' : 'text-slate-200'}`}>
-                                {s.name}
-                              </span>
-                            </td>
-                            <td className="py-3.5 px-2 text-center font-mono font-black text-emerald-400 text-sm">
-                              {s.wins}
-                            </td>
-                            <td className="py-3.5 px-2 text-center font-mono text-slate-400 text-xs">
-                              {s.matchesPlayed}
-                            </td>
-                            <td className="py-3.5 px-2 text-center font-mono text-red-400 text-xs">
-                              {s.losses}
-                            </td>
-                            <td className="py-3.5 px-2 text-center font-mono text-slate-300 text-xs">
-                              {s.pointsWon}
-                            </td>
-                            <td className="py-3.5 px-4 text-center font-mono font-bold text-xs">
-                              <span className={s.diff > 0 ? 'text-emerald-400' : s.diff < 0 ? 'text-red-400' : 'text-slate-500'}>
-                                {s.diff > 0 ? `+${s.diff}` : s.diff}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Score calculation info */}
-                <div className="bg-slate-950/20 border border-slate-900/60 p-4 rounded-xl flex items-start gap-3">
-                  <Info className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                  <p className="text-[11px] text-slate-500 leading-relaxed">
-                    <strong>Sistema de Puntuación:</strong> Cada partido se juega por puntos individuales (máx. 10). <strong>PG</strong> = Partidos Ganados, <strong>PJ</strong> = Partidos Jugados, <strong>PP</strong> = Partidos Perdidos. Se ordena por partidos ganados, diferencia de puntos y puntos a favor.
-                  </p>
-                </div>
-
-                {/* Resting status in current round */}
-                {activeTournament && (
-                  (() => {
-                    const currentRoundMatches = activeTournament.matches.filter(m => m.round === activeTournament.currentRound);
-                    const restedIds = new Set<string>();
-                    currentRoundMatches.forEach(m => {
-                      m.resting.forEach(id => restedIds.add(id));
-                    });
-                    const notRested = activeTournament.players.filter(p => !restedIds.has(p.id));
-
-                    return (
-                      <div className="bg-slate-950/20 border border-slate-900/60 p-4 rounded-xl flex items-start gap-3">
-                        <RefreshCw className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5 animate-spin" style={{ animationDuration: '6s' }} />
-                        <div className="text-[11px] text-slate-500 leading-relaxed">
-                          <strong>Faltan por descansar esta ronda:</strong>{" "}
-                          {notRested.length > 0 ? (
-                            <span className="text-emerald-400 font-bold">
-                              {notRested.map(p => p.name).join(", ")}
-                            </span>
-                          ) : (
-                            <span className="text-slate-400 italic">Todos los jugadores han descansado en esta ronda.</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })()
-                )}
-
-              </div>
-
-            </div>
-
-            {/* ROUND PAIR HISTORY CARD */}
-            <div className="bg-slate-900/40 border border-slate-800/80 rounded-3xl shadow-xl p-6 flex flex-col gap-6">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
-                  <Swords className="w-4 h-4 text-purple-400" />
-                </div>
-                <h4 className="text-sm font-bold text-slate-300 uppercase tracking-widest">Historial de Parejas por Ronda</h4>
-              </div>
-
-              {roundPairSummary.length === 0 ? (
-                <p className="text-xs text-slate-600">Aún no hay parejas registradas.</p>
-              ) : (
-                <div className="flex flex-col gap-5">
-                  {roundPairSummary.map(round => (
-                    <div key={round.roundNumber} className="flex flex-col gap-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-black text-purple-400 uppercase tracking-wider">
-                          Ronda {round.roundNumber}
-                        </span>
-                        <span className="flex-1 h-px bg-slate-800/60" />
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
-                        {round.pairs.map((pair, idx) => (
-                          <div
-                            key={idx}
-                            className={`flex items-center justify-between px-3 py-2.5 rounded-xl border text-xs font-medium transition-all ${
-                              pair.count >= 2
-                                ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-300'
-                                : 'bg-slate-950/30 border-slate-800/40 text-slate-400'
-                            }`}
-                          >
-                            <span className="truncate mr-1">
-                              {pair.p1Name.split(' ')[0]} & {pair.p2Name.split(' ')[0]}
-                            </span>
-                            <span className={`font-mono font-black text-sm shrink-0 ${
-                              pair.count >= 2 ? 'text-emerald-400' : 'text-slate-500'
-                            }`}>
-                              {pair.count}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* Show unmet pairs for current round if active */}
-                  {stage === 'active' && !isRoundComplete && (
-                    <div className="bg-amber-500/5 border border-amber-500/15 rounded-xl p-4 flex items-start gap-3">
-                      <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                      <div className="text-[11px] text-amber-300/80 leading-relaxed">
-                        <strong>Faltan por completar:</strong>{' '}
-                        {getUnmetPairs(activeTournament.players, activeTournament.pairPlayHistory).map(([id1, id2], i, arr) => {
-                          const n1 = activeTournament.players.find(p => p.id === id1)?.name.split(' ')[0];
-                          const n2 = activeTournament.players.find(p => p.id === id2)?.name.split(' ')[0];
+                  <div className="bg-slate-950/30 rounded-2xl border border-slate-800/60 overflow-hidden">
+                    <table className="w-full text-left border-collapse">
+                      <thead className="bg-slate-950/80 border-b border-slate-800/80 text-[9px] uppercase tracking-widest text-slate-500 font-black">
+                        <tr>
+                          <th className="py-2.5 px-3 text-center w-8">#</th>
+                          <th className="py-2.5 px-2">Jugador</th>
+                          <th className="py-2.5 px-2 text-center">PG</th>
+                          <th className="py-2.5 px-2 text-center">Pts+</th>
+                          <th className="py-2.5 px-3 text-center">Dif</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {standings.map((s, idx) => {
+                          const isLeader = idx === 0;
                           return (
-                            <span key={`${id1}-${id2}`}>
-                              {n1} & {n2}
-                              {i < arr.length - 1 ? ', ' : ''}
-                            </span>
+                            <tr 
+                              key={s.id}
+                              className={`border-b border-slate-900/50 hover:bg-slate-800/10 transition-colors ${
+                                isLeader ? 'bg-emerald-500/[0.02]' : ''
+                              }`}
+                            >
+                              <td className="py-2.5 px-3 text-center">
+                                {isLeader ? (
+                                  <span className="w-5 h-5 rounded-full bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 flex items-center justify-center mx-auto text-[10px] font-black">
+                                    1
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] font-bold text-slate-500">
+                                    {idx + 1}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-2">
+                                <span className={`text-xs font-semibold ${isLeader ? 'text-emerald-300 font-bold' : 'text-slate-200'}`}>
+                                  {s.name}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-2 text-center font-mono font-black text-emerald-400 text-[11px]">
+                                {s.wins}
+                              </td>
+                              <td className="py-2.5 px-2 text-center font-mono text-slate-300 text-[11px]">
+                                {s.pointsWon}
+                              </td>
+                              <td className="py-2.5 px-3 text-center font-mono font-bold text-[11px]">
+                                <span className={s.diff > 0 ? 'text-emerald-400' : s.diff < 0 ? 'text-red-400' : 'text-slate-500'}>
+                                  {s.diff > 0 ? `+${s.diff}` : s.diff}
+                                </span>
+                              </td>
+                            </tr>
                           );
                         })}
-                      </div>
-                    </div>
-                  )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
-
           </motion.div>
         )}
 
@@ -1287,138 +1130,252 @@ export default function MicPadelLeagueView() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[1000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+            className="fixed inset-0 z-[1000] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 overflow-y-auto"
             onClick={() => setShowFinishModal(false)}
           >
             <motion.div
-              initial={{ scale: 0.7, opacity: 0, y: 40 }}
+              initial={{ scale: 0.7, opacity: 0, y: 60 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.8, opacity: 0, y: 20 }}
-              transition={{ type: 'spring', damping: 20, stiffness: 250 }}
+              transition={{ type: 'spring', damping: 18, stiffness: 200, delay: 0.1 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-lg w-full flex flex-col items-center gap-6 relative overflow-hidden shadow-2xl"
+              className="bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-700/60 rounded-3xl p-8 max-w-4xl w-full flex flex-col items-center gap-8 relative overflow-hidden shadow-2xl my-8"
             >
-              {/* Decorative elements */}
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-yellow-400 to-purple-500" />
-              <div className="absolute -top-20 -right-20 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl" />
-              <div className="absolute -bottom-20 -left-20 w-48 h-48 bg-purple-500/5 rounded-full blur-3xl" />
+              {/* Decorative top bar */}
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-500 via-yellow-400 to-purple-500" />
+              <div className="absolute -top-32 -right-32 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl" />
+              <div className="absolute -bottom-32 -left-32 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl" />
+              <div className="absolute top-20 left-1/2 -translate-x-1/2 w-96 h-96 bg-yellow-500/[0.02] rounded-full blur-3xl" />
 
               <button
                 onClick={() => setShowFinishModal(false)}
-                className="absolute top-4 right-4 p-1.5 text-slate-500 hover:text-white transition-colors"
+                className="absolute top-4 right-4 p-2 text-slate-500 hover:text-white transition-colors z-10"
               >
                 <X className="w-5 h-5" />
               </button>
 
-              {/* Trophy animation */}
+              {/* Title */}
               <motion.div
-                initial={{ rotate: -10, scale: 0 }}
-                animate={{ rotate: 0, scale: 1 }}
-                transition={{ type: 'spring', damping: 8, stiffness: 150, delay: 0.2 }}
-                className="w-24 h-24 rounded-full bg-gradient-to-br from-yellow-500/20 to-emerald-500/10 border-2 border-yellow-500/30 flex items-center justify-center shadow-xl shadow-yellow-900/10"
+                initial={{ y: -20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="text-center relative z-10"
               >
-                <motion.span
-                  animate={{ scale: [1, 1.15, 1] }}
-                  transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
-                  className="text-5xl"
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', delay: 0.5, stiffness: 300 }}
+                  className="w-16 h-16 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-yellow-500/20"
                 >
-                  🏆
-                </motion.span>
+                  <Trophy className="w-8 h-8 text-white" />
+                </motion.div>
+                <h3 className="text-3xl font-black text-white uppercase tracking-wider">
+                  ¡Torneo Completado!
+                </h3>
+                <p className="text-slate-400 text-sm mt-2">Mic Padel League · 10 Rondas</p>
               </motion.div>
 
-              <div className="text-center">
-                <motion.h3
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="text-2xl font-black text-white uppercase tracking-wider"
-                >
-                  ¡Torneo Finalizado!
-                </motion.h3>
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.5 }}
-                  className="text-xs text-slate-400 mt-2"
-                >
-                  Resultados finales por partidos ganados
-                </motion.p>
-              </div>
-
-              {/* Podium */}
-              <div className="w-full flex flex-col gap-2">
-                {standings.slice(0, activeTournament.playerCount).map((s, idx) => (
+              {/* PODIUM */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6 }}
+                className="flex items-end justify-center gap-4 w-full max-w-md relative z-10"
+              >
+                {/* 2nd Place */}
+                {standings.length >= 2 && (
                   <motion.div
-                    key={s.id}
-                    initial={{ opacity: 0, x: -30 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.4 + idx * 0.12 }}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all ${
-                      idx === 0
-                        ? 'bg-gradient-to-r from-yellow-500/10 to-yellow-500/5 border-yellow-500/30 shadow-md shadow-yellow-900/10'
-                        : idx === 1
-                        ? 'bg-slate-800/30 border-slate-600/30'
-                        : idx === 2
-                        ? 'bg-amber-900/10 border-amber-700/20'
-                        : 'bg-slate-900/20 border-slate-800/40'
-                    }`}
+                    initial={{ y: 40, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.9 }}
+                    className="flex-1 flex flex-col items-center"
                   >
-                    <span className="text-xl w-8 text-center">
-                      {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}`}
-                    </span>
-                    <span className={`text-sm font-bold flex-1 ${idx === 0 ? 'text-yellow-300' : 'text-white'}`}>
-                      {s.name}
-                    </span>
-                    <div className="flex items-center gap-4 text-xs font-mono">
-                      <span className="text-emerald-400 font-bold">{s.wins}W</span>
-                      <span className="text-red-400">{s.losses}L</span>
-                      <span className={`font-bold ${s.diff > 0 ? 'text-emerald-400' : s.diff < 0 ? 'text-red-400' : 'text-slate-500'}`}>
-                        {s.diff > 0 ? `+${s.diff}` : s.diff}
-                      </span>
+                    <div className="w-12 h-12 rounded-full bg-slate-700 border-2 border-slate-500 flex items-center justify-center text-slate-300 font-black text-lg mb-2 shadow-md">
+                      2
+                    </div>
+                    <span className="text-xs font-bold text-slate-300 text-center mb-2 truncate w-full">{standings[1].name}</span>
+                    <div className="w-full bg-gradient-to-t from-slate-700 to-slate-600 rounded-t-xl h-20 flex items-center justify-center border border-slate-500/40">
+                      <span className="text-white font-black text-lg">{standings[1].wins}V</span>
                     </div>
                   </motion.div>
-                ))}
-              </div>
+                )}
 
-              {/* Confetti stars */}
-              {[...Array(12)].map((_, i) => (
-                <motion.div
-                  key={i}
-                  className="absolute pointer-events-none"
-                  initial={{
-                    x: '50%',
-                    y: '50%',
-                    opacity: 0,
-                    scale: 0
-                  }}
-                  animate={{
-                    x: `${10 + Math.random() * 80}%`,
-                    y: `${5 + Math.random() * 90}%`,
-                    opacity: [0, 1, 0],
-                    scale: [0, 1, 0.5],
-                    rotate: Math.random() * 360
-                  }}
-                  transition={{
-                    duration: 2 + Math.random() * 2,
-                    delay: 0.5 + Math.random() * 1,
-                    repeat: Infinity,
-                    repeatDelay: Math.random() * 3
-                  }}
-                >
-                  <Star className={`w-3 h-3 ${
-                    ['text-yellow-400', 'text-emerald-400', 'text-purple-400', 'text-pink-400'][i % 4]
-                  }`} fill="currentColor" />
-                </motion.div>
-              ))}
+                {/* 1st Place */}
+                {standings.length >= 1 && (
+                  <motion.div
+                    initial={{ y: 40, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 1.1 }}
+                    className="flex-1 flex flex-col items-center"
+                  >
+                    <motion.div
+                      animate={{ y: [0, -4, 0] }}
+                      transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+                      className="w-14 h-14 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 border-2 border-yellow-300 flex items-center justify-center text-white font-black text-xl mb-2 shadow-lg shadow-yellow-500/30"
+                    >
+                      <Star className="w-6 h-6" />
+                    </motion.div>
+                    <span className="text-sm font-black text-yellow-400 text-center mb-2 truncate w-full">{standings[0].name}</span>
+                    <div className="w-full bg-gradient-to-t from-yellow-600/80 to-yellow-500/60 rounded-t-xl h-28 flex items-center justify-center border border-yellow-500/40 relative">
+                      <span className="text-white font-black text-2xl">{standings[0].wins}V</span>
+                      <div className="absolute -top-1 left-0 w-full h-1 bg-gradient-to-r from-transparent via-yellow-400 to-transparent" />
+                    </div>
+                  </motion.div>
+                )}
 
-              <button
-                onClick={() => {
-                  setShowFinishModal(false);
-                }}
-                className="w-full bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold uppercase tracking-wider py-3 rounded-xl transition-all mt-2"
+                {/* 3rd Place */}
+                {standings.length >= 3 && (
+                  <motion.div
+                    initial={{ y: 40, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.7 }}
+                    className="flex-1 flex flex-col items-center"
+                  >
+                    <div className="w-11 h-11 rounded-full bg-amber-900/60 border-2 border-amber-700/60 flex items-center justify-center text-amber-400 font-black text-lg mb-2 shadow-md">
+                      3
+                    </div>
+                    <span className="text-xs font-bold text-slate-400 text-center mb-2 truncate w-full">{standings[2].name}</span>
+                    <div className="w-full bg-gradient-to-t from-amber-900/50 to-amber-800/30 rounded-t-xl h-14 flex items-center justify-center border border-amber-700/30">
+                      <span className="text-white font-black text-lg">{standings[2].wins}V</span>
+                    </div>
+                  </motion.div>
+                )}
+              </motion.div>
+
+              {/* FULL STANDINGS TABLE */}
+              <motion.div
+                initial={{ y: 30, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 1.3 }}
+                className="w-full relative z-10"
               >
-                Cerrar
-              </button>
+                <h4 className="text-xs font-black text-emerald-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <Flag className="w-3.5 h-3.5" />
+                  Tabla de Posiciones Final
+                </h4>
+                <div className="bg-slate-950/60 rounded-2xl border border-slate-800/80 overflow-hidden">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-slate-950/90 border-b border-slate-700/60">
+                      <tr className="text-[9px] uppercase tracking-widest text-slate-500 font-black">
+                        <th className="py-3 px-3 text-center w-8">#</th>
+                        <th className="py-3 px-3">Jugador</th>
+                        <th className="py-3 px-2 text-center">PJ</th>
+                        <th className="py-3 px-2 text-center">V</th>
+                        <th className="py-3 px-2 text-center">D</th>
+                        <th className="py-3 px-2 text-center">PF</th>
+                        <th className="py-3 px-2 text-center">PC</th>
+                        <th className="py-3 px-3 text-center">DIF</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {standings.map((s, idx) => {
+                        const medals = ['🥇', '🥈', '🥉'];
+                        return (
+                          <motion.tr
+                            key={s.id}
+                            initial={{ x: -20, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            transition={{ delay: 1.5 + idx * 0.15 }}
+                            className={`border-b border-slate-800/40 transition-colors ${
+                              idx === 0 ? 'bg-yellow-500/[0.04]' : idx === 1 ? 'bg-slate-500/[0.02]' : idx === 2 ? 'bg-amber-500/[0.02]' : ''
+                            }`}
+                          >
+                            <td className="py-3 px-3 text-center">
+                              {idx < 3 ? (
+                                <span className="text-base">{medals[idx]}</span>
+                              ) : (
+                                <span className="text-[11px] font-bold text-slate-500">{idx + 1}</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className={`text-sm font-bold ${idx === 0 ? 'text-yellow-400' : idx === 1 ? 'text-slate-200' : idx === 2 ? 'text-amber-400' : 'text-slate-300'}`}>
+                                {s.name}
+                              </span>
+                            </td>
+                            <td className="py-3 px-2 text-center font-mono text-slate-400 text-xs">
+                              {s.matchesPlayed}
+                            </td>
+                            <td className="py-3 px-2 text-center font-mono font-black text-emerald-400 text-sm">
+                              {s.wins}
+                            </td>
+                            <td className="py-3 px-2 text-center font-mono text-red-400/80 text-xs">
+                              {s.losses}
+                            </td>
+                            <td className="py-3 px-2 text-center font-mono text-sky-400 text-xs font-bold">
+                              {s.pointsWon}
+                            </td>
+                            <td className="py-3 px-2 text-center font-mono text-rose-400/80 text-xs">
+                              {s.pointsLost}
+                            </td>
+                            <td className="py-3 px-3 text-center font-mono font-black text-sm">
+                              <span className={s.diff > 0 ? 'text-emerald-400' : s.diff < 0 ? 'text-red-400' : 'text-slate-500'}>
+                                {s.diff > 0 ? `+${s.diff}` : s.diff}
+                              </span>
+                            </td>
+                          </motion.tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Tiebreaker rules */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 2.2 }}
+                  className="mt-4 p-3 bg-slate-950/40 rounded-xl border border-slate-800/40"
+                >
+                  <p className="text-[9px] text-slate-500 uppercase tracking-widest font-bold mb-2">Criterios de desempate</p>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-400">
+                    <span>1. Victorias</span>
+                    <span>2. Diferencia de puntos</span>
+                    <span>3. Puntos a favor</span>
+                    <span>4. Puntos en contra (menor)</span>
+                  </div>
+                </motion.div>
+              </motion.div>
+
+              {/* VERIFICATION */}
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 2.0 }}
+                className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10"
+              >
+                <div className="bg-slate-950/40 rounded-xl p-4 border border-slate-800/50">
+                  <span className="text-[9px] text-slate-500 uppercase tracking-wider font-bold">Descansos por Jugador</span>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {Object.entries(getTournamentStats().rests).map(([id, rests]) => (
+                      <div key={id} className={`text-xs px-2.5 py-1 rounded-lg border font-semibold ${rests === 2 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+                        {getPlayerName(id)}: {rests}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/40 rounded-xl p-4 border border-slate-800/50">
+                  <span className="text-[9px] text-slate-500 uppercase tracking-wider font-bold">Parejas formadas (Máx 2)</span>
+                  <div className="grid grid-cols-2 gap-1.5 mt-2 max-h-[100px] overflow-y-auto custom-scrollbar">
+                    {getTournamentStats().pairs.map((p, i) => (
+                      <div key={i} className={`text-[10px] px-2 py-1 rounded border flex justify-between ${p.count <= 2 ? 'bg-emerald-500/5 border-emerald-500/20 text-slate-300' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+                        <span>{p.p1Name} & {p.p2Name}</span>
+                        <span className="font-bold">{p.count}x</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+
+              <motion.button
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 2.5 }}
+                onClick={() => setShowFinishModal(false)}
+                className="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-sm font-bold uppercase tracking-wider py-4 rounded-xl transition-all mt-2 shadow-lg shadow-emerald-500/10"
+              >
+                Cerrar Resumen
+              </motion.button>
             </motion.div>
           </motion.div>
         )}
