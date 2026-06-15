@@ -859,7 +859,7 @@ export default function MicPadelLeagueView() {
                     </div>
                   ) : (
                     // --- NORMAL MATCH SCORE INPUT ---
-                    <div className="bg-slate-950/40 border border-slate-800/60 p-6 rounded-2xl flex flex-col gap-6 relative overflow-hidden">
+                    <div className="bg-slate-950/40 border border-slate-800/30 p-6 rounded-2xl flex flex-col gap-6 relative overflow-hidden">
                       <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-xl pointer-events-none" />
                       
                       {/* Visual Arena representation */}
@@ -990,8 +990,8 @@ export default function MicPadelLeagueView() {
                 <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
                   <div className="flex flex-col gap-4">
                     {activeTournament.matches.filter(m => m.score).map((m, i) => (
-                      <div key={i} className="bg-slate-950/40 border border-slate-800/60 p-4 rounded-xl flex flex-col gap-3">
-                        <div className="flex items-center justify-between border-b border-slate-800/60 pb-2">
+                      <div key={i} className="bg-slate-950/40 border border-slate-800/30 p-4 rounded-xl flex flex-col gap-3">
+                        <div className="flex items-center justify-between border-b border-slate-800/30 pb-2">
                           <span className="text-xs font-black text-emerald-400 uppercase tracking-widest">
                             Ronda {m.round}
                           </span>
@@ -1061,7 +1061,7 @@ export default function MicPadelLeagueView() {
                     </div>
                   </div>
 
-                  <div className="bg-slate-950/30 rounded-2xl border border-slate-800/60 overflow-hidden">
+                  <div className="bg-slate-950/30 rounded-2xl border border-slate-800/30 overflow-hidden">
                     <table className="w-full text-left border-collapse">
                       <thead className="bg-slate-950/80 border-b border-slate-800/80 text-[9px] uppercase tracking-widest text-slate-500 font-black">
                         <tr>

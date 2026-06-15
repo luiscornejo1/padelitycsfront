@@ -17,7 +17,7 @@ interface RankingsSectionProps {
 const TrendIcon = ({ trend }: { trend: string }) => {
   if (trend === 'up') return <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />;
   if (trend === 'down') return <TrendingDown className="w-3.5 h-3.5 text-rose-400" />;
-  return <Minus className="w-3.5 h-3.5 text-white/50" />;
+  return <Minus className="w-3.5 h-3.5 text-slate-400" />;
 };
 
 export default function RankingsSection({
@@ -42,18 +42,18 @@ export default function RankingsSection({
       {/* Cinematic Court Background */}
       <div className="absolute inset-0 pointer-events-none z-0">
         {/* Top Half Green */}
-        <div className="absolute top-0 left-0 right-0 h-1/2 bg-[#4B6D5B]" />
+        <div className="absolute top-0 left-0 right-0 h-1/2 bg-brand-green" />
         {/* Bottom Half Red */}
         <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-[#AC3C38]" />
         
         {/* White T Lines */}
         {/* Horizontal Service Line */}
-        <div className="absolute top-1/2 left-0 right-0 h-3 bg-white/70 shadow-[0_0_15px_rgba(255,255,255,0.4)] -translate-y-1/2" />
+        <div className="absolute top-1/2 left-0 right-0 h-3 bg-white/70 hidden -translate-y-1/2" />
         {/* Vertical Center Line */}
-        <div className="absolute top-1/2 bottom-0 left-1/2 w-3 bg-white/70 shadow-[0_0_15px_rgba(255,255,255,0.4)] -translate-x-1/2" />
+        <div className="absolute top-1/2 bottom-0 left-1/2 w-3 bg-white/70 hidden -translate-x-1/2" />
 
         {/* Darkening Overlay for Text Readability */}
-        <div className="absolute inset-0 bg-black/60" />
+        <div className="absolute inset-0 bg-slate-950/85" />
       </div>
 
       <div className="container mx-auto max-w-6xl relative z-10">
@@ -77,23 +77,23 @@ export default function RankingsSection({
                   <h2 className="text-[36px] md:text-[48px] font-bold text-white mb-2 tracking-tight drop-shadow-lg" style={{ fontFamily: "'Playfair Display', serif" }}>
                     Clasificación General
                   </h2>
-                  <p className="text-white/70 font-light text-[18px]">Los mejores jugadores de la ciudad</p>
+                  <p className="text-slate-400 font-light text-[18px]">Los mejores jugadores de la ciudad</p>
                 </motion.div>
 
                 {/* Gender Toggle */}
-                <div className="inline-flex bg-black/50 backdrop-blur-md p-1 rounded-xl border border-white/10">
+                <div className="inline-flex bg-slate-900/80 backdrop-blur-md p-1 rounded-xl border border-slate-700">
                   {(['Masculino', 'Femenino'] as Gender[]).map((g) => (
                     <button
                       key={g}
                       onClick={() => setGender(g)}
                       className={`relative px-7 py-2.5 rounded-lg text-[14px] font-bold tracking-[0.1em] uppercase transition-colors duration-300 ${
-                        gender === g ? 'text-white' : 'text-white/50 hover:text-white/80'
+                        gender === g ? 'text-white' : 'text-slate-400 hover:text-white/80'
                       }`}
                     >
                       {gender === g && (
                         <motion.div
                           layoutId="genderPill"
-                          className="absolute inset-0 bg-[#4B6D5B] rounded-lg shadow-lg"
+                          className="absolute inset-0 bg-brand-green rounded-lg shadow-lg"
                           transition={{ type: 'spring', bounce: 0.2, duration: 0.5 }}
                         />
                       )}
@@ -118,17 +118,17 @@ export default function RankingsSection({
                       key={cat}
                       variants={staggerItem}
                       whileHover={{ y: -4, transition: { duration: 0.3 } }}
-                      className="bg-black/60 backdrop-blur-lg border border-white/10 rounded-2xl overflow-hidden hover:border-[#4B6D5B]/50 transition-all duration-300 hover:shadow-2xl hover:shadow-[#4B6D5B]/20"
+                      className="bg-slate-900/60 backdrop-blur-md border border-slate-700 rounded-2xl overflow-hidden hover:border-brand-green/50 transition-all duration-300 hover:shadow-2xl hover:shadow-[#4B6D5B]/20"
                     >
                       {/* Card Header */}
-                      <div className="p-5 border-b border-white/10 flex items-center justify-between">
+                      <div className="p-5 border-b border-slate-700 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-[#4B6D5B]/20 flex items-center justify-center border border-[#4B6D5B]/40">
-                            <Trophy className="w-4 h-4 text-[#4B6D5B]" />
+                          <div className="w-8 h-8 rounded-lg bg-brand-green/20 flex items-center justify-center border border-[#4B6D5B]/40">
+                            <Trophy className="w-4 h-4 text-brand-green" />
                           </div>
                           <h3 className="text-[16px] font-bold text-white tracking-wide">{cat} Categoría</h3>
                         </div>
-                        <span className="text-[10px] font-bold text-white/50 uppercase tracking-[0.15em]">Top 5</span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">Top 5</span>
                       </div>
 
                       {/* Players List */}
@@ -141,8 +141,8 @@ export default function RankingsSection({
                                   index === 0
                                     ? 'text-[#AC3C38]'
                                     : index === 1
-                                    ? 'text-[#4B6D5B]'
-                                    : 'text-white/40'
+                                    ? 'text-brand-green'
+                                    : 'text-slate-400/50'
                                 }`}
                               >
                                 {index + 1}
@@ -161,7 +161,7 @@ export default function RankingsSection({
                       <div className="px-5 pb-5">
                         <button
                           onClick={() => handleSelectCategory(cat)}
-                          className="w-full py-3 rounded-xl bg-white/5 hover:bg-[#4B6D5B] text-white/70 hover:text-white text-[11px] uppercase tracking-[0.15em] font-bold transition-all duration-300 flex items-center justify-center gap-2 border border-white/10 hover:border-[#4B6D5B] hover:shadow-lg hover:shadow-[#4B6D5B]/30"
+                          className="w-full py-3 rounded-xl bg-slate-800/50 hover:bg-brand-green text-slate-400 hover:text-white text-[11px] uppercase tracking-[0.15em] font-bold transition-all duration-300 flex items-center justify-center gap-2 border border-slate-700 hover:border-[#4B6D5B] hover:shadow-lg hover:shadow-[#4B6D5B]/30"
                         >
                           Ver ranking completo
                           <ChevronRight className="w-4 h-4" />
@@ -184,25 +184,25 @@ export default function RankingsSection({
               <div className="mb-10 flex items-center gap-5">
                 <button
                   onClick={() => setView('overview')}
-                  className="p-3 bg-black/50 backdrop-blur-md border border-white/10 hover:bg-[#4B6D5B] hover:border-[#4B6D5B] text-white/70 hover:text-white rounded-xl transition-all duration-300 shadow-lg"
+                  className="p-3 bg-slate-900/80 backdrop-blur-md border border-slate-700 hover:bg-brand-green hover:border-[#4B6D5B] text-slate-400 hover:text-white rounded-xl transition-all duration-300 shadow-lg"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
                 <div>
                   <h2 className="text-[36px] font-bold text-white tracking-tight flex items-center gap-4 drop-shadow-lg" style={{ fontFamily: "'Playfair Display', serif" }}>
                     {selectedCategory} Categoría
-                    <span className="text-[11px] font-bold tracking-[0.1em] text-white px-3 py-1.5 border border-white/20 rounded-lg bg-black/40 uppercase">
+                    <span className="text-[11px] font-bold tracking-[0.1em] text-white px-3 py-1.5 border border-slate-700 rounded-lg bg-slate-800/80 uppercase">
                       {gender}
                     </span>
                   </h2>
                 </div>
               </div>
 
-              <div className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+              <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-700 rounded-2xl overflow-hidden shadow-2xl">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse min-w-[800px]">
                     <thead>
-                      <tr className="bg-black/40 text-white/50 text-[11px] uppercase tracking-[0.12em] border-b border-white/10">
+                      <tr className="bg-slate-800/80 text-slate-400 text-[11px] uppercase tracking-[0.12em] border-b border-slate-700">
                         <th className="p-5 font-bold w-20 text-center">Pos</th>
                         <th className="p-5 font-bold">Jugador</th>
                         <th className="p-5 font-bold text-right">ELO</th>
@@ -216,7 +216,7 @@ export default function RankingsSection({
                     </thead>
                     <tbody className="divide-y divide-white/5">
                       {currentData[selectedCategory as Category]?.map((player: Player, index: number) => (
-                        <tr key={player.id} className="hover:bg-white/5 transition-colors duration-200 group">
+                        <tr key={player.id} className="hover:bg-slate-800/50 transition-colors duration-200 group">
                           <td className="p-5 text-center">
                             <div className="flex items-center justify-center gap-2">
                               {index < 3 ? (
@@ -225,22 +225,22 @@ export default function RankingsSection({
                                     index === 0
                                       ? 'bg-[#AC3C38] text-white shadow-lg shadow-[#AC3C38]/40'
                                       : index === 1
-                                      ? 'bg-[#4B6D5B] text-white shadow-lg shadow-[#4B6D5B]/40'
-                                      : 'bg-black/50 text-white/70 border border-white/20'
+                                      ? 'bg-brand-green text-white shadow-lg shadow-[#4B6D5B]/40'
+                                      : 'bg-slate-800 text-white border border-slate-700'
                                   }`}
                                 >
                                   {index + 1}
                                 </span>
                               ) : (
-                                <span className="text-white/40 font-bold text-[14px]">{index + 1}</span>
+                                <span className="text-slate-400/50 font-bold text-[14px]">{index + 1}</span>
                               )}
                               <TrendIcon trend={player.trend} />
                             </div>
                           </td>
                           <td className="p-5">
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0 border border-white/10">
-                                <User className="w-4 h-4 text-white/50 group-hover:text-[#4B6D5B] transition-colors" />
+                              <div className="w-8 h-8 rounded-lg bg-slate-800/50 flex items-center justify-center shrink-0 border border-slate-700">
+                                <User className="w-4 h-4 text-slate-400 group-hover:text-brand-green transition-colors" />
                               </div>
                               <span className="font-bold text-white/90 group-hover:text-white transition-colors tracking-wide">
                                 {player.name}
@@ -254,10 +254,10 @@ export default function RankingsSection({
                             <span
                               className={`text-[12px] font-bold px-2.5 py-1 rounded-md tracking-wider ${
                                 player.winRate >= 70
-                                  ? 'text-[#4B6D5B] bg-[#4B6D5B]/10 border border-[#4B6D5B]/20'
+                                  ? 'text-brand-green bg-brand-green/10 border border-[#4B6D5B]/20'
                                   : player.winRate >= 55
-                                  ? 'text-white/70 bg-white/5 border border-white/10'
-                                  : 'text-white/40 bg-black/30'
+                                  ? 'text-slate-400 bg-slate-800/50 border border-slate-700'
+                                  : 'text-slate-400/50 bg-slate-800/50'
                               }`}
                             >
                               {player.winRate}%
@@ -266,8 +266,8 @@ export default function RankingsSection({
                           <td className="p-5 text-right text-white/60 font-medium text-[14px]">
                             {player.matches}
                           </td>
-                          <td className="p-5 text-center text-white/70 text-[14px] font-medium">{player.side}</td>
-                          <td className="p-5 text-white/70 text-[14px]">{player.bestShot}</td>
+                          <td className="p-5 text-center text-slate-400 text-[14px] font-medium">{player.side}</td>
+                          <td className="p-5 text-slate-400 text-[14px]">{player.bestShot}</td>
                           <td className="p-5 text-center">
                             <a
                               href={`https://wa.me/51999999999?text=${encodeURIComponent(
@@ -275,7 +275,7 @@ export default function RankingsSection({
                               )}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[#4B6D5B]/10 text-[#4B6D5B] hover:bg-[#4B6D5B] hover:text-white transition-all duration-300 border border-[#4B6D5B]/20"
+                              className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-brand-green/10 text-brand-green hover:bg-brand-green hover:text-white transition-all duration-300 border border-[#4B6D5B]/20"
                             >
                               <MessageCircle className="w-4 h-4" />
                             </a>
@@ -283,7 +283,7 @@ export default function RankingsSection({
                           <td className="p-5">
                             <button
                               onClick={onStartOnboarding}
-                              className="text-[10px] font-bold text-white/70 hover:text-white hover:bg-[#AC3C38] px-4 py-2 rounded-lg transition-all duration-300 opacity-0 group-hover:opacity-100 border border-white/20 hover:border-[#AC3C38] uppercase tracking-[0.1em]"
+                              className="text-[10px] font-bold text-slate-400 hover:text-white hover:bg-[#AC3C38] px-4 py-2 rounded-lg transition-all duration-300 opacity-0 group-hover:opacity-100 border border-slate-700 hover:border-[#AC3C38] uppercase tracking-[0.1em]"
                             >
                               Reclamar
                             </button>

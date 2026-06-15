@@ -13,6 +13,7 @@ interface BracketGeneratorProps {
   bracketResults?: Record<string, string>; // matchId -> winnerId
   onWinnerSelect?: (matchId: string, winnerId: string) => void;
   isAdmin?: boolean;
+  size?: number; // 4 or 8
 }
 
 const ROULETTE_NAMES = [
@@ -73,20 +74,20 @@ const BracketSlot = ({
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.5, delay: delay }}
       onClick={isInteractive && isRevealed && participant ? onClick : undefined}
-      className={`relative w-64 p-3 rounded-lg border flex items-center gap-3 transition-all ${
+      className={`relative w-64 p-3 rounded-lg border flex items-center gap-3 transition-all duration-300 ${
         isWinner 
-        ? 'bg-blue-600/20 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.3)]' 
+        ? 'bg-blue-500/20 border-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.4)]' 
         : isRevealed 
-          ? 'bg-slate-900 border-slate-700' 
-          : 'bg-slate-950 border-slate-800'
-      } ${isInteractive && isRevealed && participant ? 'cursor-pointer hover:border-blue-400 hover:bg-slate-800' : ''}`}
+          ? 'bg-[#0F172A] border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.1)]' 
+          : 'bg-[#0B1120] border-blue-900/40'
+      } ${isInteractive && isRevealed && participant ? 'cursor-pointer hover:border-blue-400 hover:bg-[#1E293B] hover:shadow-[0_0_25px_rgba(59,130,246,0.3)]' : ''}`}
     >
-      <div className="w-8 h-8 shrink-0 rounded bg-slate-950 flex items-center justify-center border border-slate-800 font-black text-xs text-slate-500">
+      <div className={`w-8 h-8 shrink-0 rounded flex items-center justify-center border font-black text-[11px] ${isRevealed ? 'bg-blue-900/50 border-blue-500/50 text-white shadow-inner' : 'bg-[#0B1120] border-blue-900/50 text-slate-600'}`}>
         {participant?.seed || '-'}
       </div>
-      <div className="flex-1 flex flex-col justify-center min-h-[40px]">
+      <div className="flex-1 flex flex-col justify-center min-h-[40px] min-w-0">
         {participant ? (
-          <span className={`text-sm font-bold truncate ${isRevealed ? 'text-white' : 'text-slate-500 font-mono text-xs'}`}>
+          <span className={`text-sm font-bold truncate block w-full ${isRevealed ? 'text-white' : 'text-slate-400 tracking-widest font-mono text-xs'}`}>
             {displayNames}
           </span>
         ) : (
@@ -101,23 +102,36 @@ export default function BracketGenerator({
   participants, 
   bracketResults = {}, 
   onWinnerSelect,
-  isAdmin = false 
+  isAdmin = false,
+  size = 8
 }: BracketGeneratorProps) {
-  const isEight = participants.length > 4;
+  const isEight = size === 8;
 
-  const q1_p1 = isEight ? participants[0] : undefined;
-  const q1_p2 = isEight ? participants[1] : undefined;
-  const q2_p1 = isEight ? participants[2] : undefined;
-  const q2_p2 = isEight ? participants[3] : undefined;
-  const q3_p1 = isEight ? participants[4] : undefined;
-  const q3_p2 = isEight ? participants[5] : undefined;
-  const q4_p1 = isEight ? participants[6] : undefined;
-  const q4_p2 = isEight ? participants[7] : undefined;
+  // We assume participants array has already been sized/shuffled appropriately by the parent,
+  // but we pad it just in case so we don't break.
+  const paddedParticipants = [...participants];
+  while (paddedParticipants.length < size) {
+    paddedParticipants.push({ id: `bye-${paddedParticipants.length}`, name: 'BYE (Pasa Directo)', seed: '-' });
+  }
+
+  const q1_p1 = isEight ? paddedParticipants[0] : undefined;
+  const q1_p2 = isEight ? paddedParticipants[1] : undefined;
+  const q2_p1 = isEight ? paddedParticipants[2] : undefined;
+  const q2_p2 = isEight ? paddedParticipants[3] : undefined;
+  const q3_p1 = isEight ? paddedParticipants[4] : undefined;
+  const q3_p2 = isEight ? paddedParticipants[5] : undefined;
+  const q4_p1 = isEight ? paddedParticipants[6] : undefined;
+  const q4_p2 = isEight ? paddedParticipants[7] : undefined;
 
   const getWinner = (matchId: string, p1?: BracketParticipant, p2?: BracketParticipant) => {
     const wId = bracketResults[matchId];
     if (wId && p1 && wId === p1.id) return p1;
     if (wId && p2 && wId === p2.id) return p2;
+    
+    // Auto-advance if playing against BYE
+    if (p1 && p2?.name.includes('BYE')) return p1;
+    if (p2 && p1?.name.includes('BYE')) return p2;
+    
     return undefined;
   };
 
@@ -127,10 +141,10 @@ export default function BracketGenerator({
     }
   };
 
-  const s1_p1 = isEight ? getWinner('q1', q1_p1, q1_p2) : participants[0];
-  const s1_p2 = isEight ? getWinner('q2', q2_p1, q2_p2) : participants[1];
-  const s2_p1 = isEight ? getWinner('q3', q3_p1, q3_p2) : participants[2];
-  const s2_p2 = isEight ? getWinner('q4', q4_p1, q4_p2) : participants[3];
+  const s1_p1 = isEight ? getWinner('q1', q1_p1, q1_p2) : paddedParticipants[0];
+  const s1_p2 = isEight ? getWinner('q2', q2_p1, q2_p2) : paddedParticipants[1];
+  const s2_p1 = isEight ? getWinner('q3', q3_p1, q3_p2) : paddedParticipants[2];
+  const s2_p2 = isEight ? getWinner('q4', q4_p1, q4_p2) : paddedParticipants[3];
 
   const f_p1 = getWinner('s1', s1_p1, s1_p2);
   const f_p2 = getWinner('s2', s2_p1, s2_p2);
@@ -146,14 +160,14 @@ export default function BracketGenerator({
   );
 
   return (
-    <div className="w-full flex flex-col items-center py-10 overflow-x-auto scrollbar-hide">
-      <div className="flex items-start gap-16 min-w-max px-4 relative">
+    <div className="w-full overflow-x-auto pb-12 pt-16 custom-scrollbar">
+      <div className="flex items-start gap-16 min-w-max px-8 mx-auto w-max relative">
         
         {/* QUARTERFINALS COLUMN */}
         {isEight && (
           <div className="flex flex-col relative z-10 w-64">
             <div className="absolute top-[-30px] w-full text-center">
-              <h4 className="text-sm font-black tracking-[0.3em] text-slate-500 uppercase">Cuartos</h4>
+              <h4 className="text-sm font-black tracking-[0.3em] text-slate-400 tracking-widest uppercase">Cuartos</h4>
             </div>
             
             {/* Group 1 (Q1 & Q2) */}
@@ -163,9 +177,9 @@ export default function BracketGenerator({
               {renderMatch('q2', q2_p1, q2_p2)}
               
               {/* Bracket connector */}
-              <div className="absolute right-[-32px] w-[32px] border-r-2 border-y-2 border-slate-700 rounded-r-lg z-0" style={{ top: '70px', height: '172px' }} />
+              <div className="absolute right-[-32px] w-[32px] border-r-2 border-y-2 border-blue-500/30 rounded-r-lg z-0" style={{ top: '70px', height: '172px' }} />
               {/* Output line */}
-              <div className="absolute right-[-64px] w-[32px] border-t-2 border-slate-700 z-0" style={{ top: '156px' }} />
+              <div className="absolute right-[-64px] w-[32px] border-t-2 border-blue-500/30 z-0" style={{ top: '156px' }} />
             </div>
 
             {/* Group 2 (Q3 & Q4) */}
@@ -175,9 +189,9 @@ export default function BracketGenerator({
               {renderMatch('q4', q4_p1, q4_p2)}
               
               {/* Bracket connector */}
-              <div className="absolute right-[-32px] w-[32px] border-r-2 border-y-2 border-slate-700 rounded-r-lg z-0" style={{ top: '70px', height: '172px' }} />
+              <div className="absolute right-[-32px] w-[32px] border-r-2 border-y-2 border-blue-500/30 rounded-r-lg z-0" style={{ top: '70px', height: '172px' }} />
               {/* Output line */}
-              <div className="absolute right-[-64px] w-[32px] border-t-2 border-slate-700 z-0" style={{ top: '156px' }} />
+              <div className="absolute right-[-64px] w-[32px] border-t-2 border-blue-500/30 z-0" style={{ top: '156px' }} />
             </div>
           </div>
         )}
@@ -185,7 +199,7 @@ export default function BracketGenerator({
         {/* SEMIFINALS COLUMN */}
         <div className="flex flex-col relative z-10 w-64" style={{ paddingTop: isEight ? '86px' : '0px' }}>
           <div className="absolute top-[-30px] w-full text-center">
-            <h4 className="text-sm font-black tracking-[0.3em] text-slate-500 uppercase">Semifinales</h4>
+            <h4 className="text-sm font-black tracking-[0.3em] text-slate-400 tracking-widest uppercase">Semifinales</h4>
           </div>
           
           <div className="relative flex flex-col">
@@ -196,16 +210,16 @@ export default function BracketGenerator({
             {/* Incoming lines (if Semis is the first column, no incoming lines) */}
             {isEight && (
                <>
-                 <div className="absolute left-[-32px] w-[32px] border-t-2 border-slate-700 z-0" style={{ top: '70px' }} />
-                 <div className="absolute left-[-32px] w-[32px] border-t-2 border-slate-700 z-0" style={{ top: '446px' }} />
+                 <div className="absolute left-[-32px] w-[32px] border-t-2 border-blue-500/30 z-0" style={{ top: '70px' }} />
+                 <div className="absolute left-[-32px] w-[32px] border-t-2 border-blue-500/30 z-0" style={{ top: '446px' }} />
                </>
             )}
 
             {/* Bracket connector */}
-            <div className="absolute right-[-32px] w-[32px] border-r-2 border-y-2 border-slate-700 rounded-r-lg z-0" 
+            <div className="absolute right-[-32px] w-[32px] border-r-2 border-y-2 border-blue-500/30 rounded-r-lg z-0" 
                  style={{ top: '70px', height: isEight ? '376px' : '172px' }} />
             {/* Output line */}
-            <div className="absolute right-[-64px] w-[32px] border-t-2 border-slate-700 z-0" 
+            <div className="absolute right-[-64px] w-[32px] border-t-2 border-blue-500/30 z-0" 
                  style={{ top: isEight ? '258px' : '156px' }} />
           </div>
         </div>
@@ -213,17 +227,17 @@ export default function BracketGenerator({
         {/* FINAL COLUMN */}
         <div className="flex flex-col relative z-10 w-64" style={{ paddingTop: isEight ? '188px' : '86px' }}>
           <div className="absolute top-[-30px] w-full text-center">
-            <h4 className="text-sm font-black tracking-[0.3em] text-blue-500 uppercase">Gran Final</h4>
+            <h4 className="text-sm font-black tracking-[0.3em] text-brand-green uppercase">Gran Final</h4>
           </div>
 
           <div className="relative flex flex-col">
             {renderMatch('f', f_p1, f_p2)}
             
             {/* Incoming line */}
-            <div className="absolute left-[-32px] w-[32px] border-t-2 border-slate-700 z-0" style={{ top: '70px' }} />
+            <div className="absolute left-[-32px] w-[32px] border-t-2 border-blue-500/30 z-0" style={{ top: '70px' }} />
             
             {/* Output line to champion */}
-            <div className="absolute right-[-32px] w-[32px] border-t-2 border-slate-700 z-0" style={{ top: '70px' }} />
+            <div className="absolute right-[-32px] w-[32px] border-t-2 border-blue-500/30 z-0" style={{ top: '70px' }} />
           </div>
         </div>
 
@@ -236,9 +250,12 @@ export default function BracketGenerator({
           <div className="relative flex flex-col">
             <BracketSlot participant={champion} isWinner delay={0} />
             {/* Incoming line */}
-            <div className="absolute left-[-32px] w-[32px] border-t-2 border-slate-700 z-0" style={{ top: '33px' }} />
+            <div className="absolute left-[-32px] w-[32px] border-t-2 border-blue-500/30 z-0" style={{ top: '33px' }} />
           </div>
         </div>
+
+        {/* Spacer for scroll margin */}
+        <div className="w-8 shrink-0" />
 
       </div>
     </div>

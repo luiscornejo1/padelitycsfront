@@ -21,12 +21,12 @@ export default function OnboardingWizard({ onComplete, onCancel }: OnboardingWiz
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95, y: 20 }}
       transition={{ duration: 0.5 }}
-      className="max-w-xl mx-auto bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl shadow-blue-900/10 backdrop-blur-xl relative"
+      className="max-w-xl mx-auto bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl shadow-brand-green-hover/10 backdrop-blur-xl relative"
     >
       {/* Progress Bar */}
       <div className="absolute top-0 left-0 w-full h-[3px] bg-slate-800">
         <motion.div
-          className="h-full bg-blue-600 shadow-lg shadow-blue-600/50"
+          className="h-full bg-brand-green shadow-lg shadow-brand-green/50"
           initial={{ width: '0%' }}
           animate={{ width: `${(step / 4) * 100}%` }}
           transition={{ duration: 0.4, ease: 'easeOut' }}
@@ -64,7 +64,7 @@ export default function OnboardingWizard({ onComplete, onCancel }: OnboardingWiz
                   <input
                     type="text"
                     placeholder="Ej: Carlos Mendoza"
-                    className="w-full bg-slate-800/60 border border-slate-700 rounded-xl p-4 text-white placeholder:text-slate-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/30 transition-all"
+                    className="w-full bg-slate-800/60 border border-slate-700 rounded-xl p-4 text-white placeholder:text-slate-600 focus:border-brand-green focus:outline-none focus:ring-1 focus:ring-brand-green/30 transition-all"
                   />
                 </div>
                 <div>
@@ -74,7 +74,7 @@ export default function OnboardingWizard({ onComplete, onCancel }: OnboardingWiz
                   <input
                     type="tel"
                     placeholder="+51 999 999 999"
-                    className="w-full bg-slate-800/60 border border-slate-700 rounded-xl p-4 text-white placeholder:text-slate-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/30 transition-all"
+                    className="w-full bg-slate-800/60 border border-slate-700 rounded-xl p-4 text-white placeholder:text-slate-600 focus:border-brand-green focus:outline-none focus:ring-1 focus:ring-brand-green/30 transition-all"
                   />
                 </div>
                 <div>
@@ -84,7 +84,7 @@ export default function OnboardingWizard({ onComplete, onCancel }: OnboardingWiz
                   <input
                     type="number"
                     placeholder="Ej: 175"
-                    className="w-full bg-slate-800/60 border border-slate-700 rounded-xl p-4 text-white placeholder:text-slate-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/30 transition-all"
+                    className="w-full bg-slate-800/60 border border-slate-700 rounded-xl p-4 text-white placeholder:text-slate-600 focus:border-brand-green focus:outline-none focus:ring-1 focus:ring-brand-green/30 transition-all"
                   />
                 </div>
               </div>
@@ -111,7 +111,7 @@ export default function OnboardingWizard({ onComplete, onCancel }: OnboardingWiz
                     <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-[0.12em] mb-2">
                       Género
                     </label>
-                    <select className="w-full bg-slate-800/60 border border-slate-700 rounded-xl p-4 text-white focus:border-blue-500 focus:outline-none appearance-none cursor-pointer">
+                    <select className="w-full bg-slate-800/60 border border-slate-700 rounded-xl p-4 text-white focus:border-brand-green focus:outline-none appearance-none cursor-pointer">
                       <option>Masculino</option>
                       <option>Femenino</option>
                     </select>
@@ -120,7 +120,7 @@ export default function OnboardingWizard({ onComplete, onCancel }: OnboardingWiz
                     <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-[0.12em] mb-2">
                       Categoría
                     </label>
-                    <select className="w-full bg-slate-800/60 border border-slate-700 rounded-xl p-4 text-white focus:border-blue-500 focus:outline-none appearance-none cursor-pointer">
+                    <select className="w-full bg-slate-800/60 border border-slate-700 rounded-xl p-4 text-white focus:border-brand-green focus:outline-none appearance-none cursor-pointer">
                       {CATEGORIES.map((c) => (
                         <option key={c}>{c}</option>
                       ))}
@@ -140,7 +140,7 @@ export default function OnboardingWizard({ onComplete, onCancel }: OnboardingWiz
                           onClick={() => setPosition(pos)}
                           className={`flex-1 py-4 rounded-xl font-semibold text-[14px] transition-all duration-300 border ${
                             position === pos
-                              ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/30'
+                              ? 'bg-brand-green text-white border-brand-green shadow-lg shadow-brand-green/30'
                               : 'bg-slate-800/60 text-slate-400 border-slate-700 hover:border-slate-600'
                           }`}
                         >
@@ -153,7 +153,7 @@ export default function OnboardingWizard({ onComplete, onCancel }: OnboardingWiz
                     <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-[0.12em] mb-2">
                       Mejor Golpe
                     </label>
-                    <select className="w-full bg-slate-800/60 border border-slate-700 rounded-xl p-4 text-white focus:border-blue-500 focus:outline-none appearance-none cursor-pointer">
+                    <select className="w-full bg-slate-800/60 border border-slate-700 rounded-xl p-4 text-white focus:border-brand-green focus:outline-none appearance-none cursor-pointer">
                       {SHOTS.map((s) => (
                         <option key={s}>{s}</option>
                       ))}
@@ -178,9 +178,9 @@ export default function OnboardingWizard({ onComplete, onCancel }: OnboardingWiz
                 Sube una prueba de tu categoría para validación oficial (ej: Trofeo, ranking anterior).
               </p>
 
-              <div className="border-2 border-dashed border-slate-700 hover:border-blue-500/60 transition-colors duration-300 bg-slate-800/30 rounded-2xl p-14 flex flex-col items-center justify-center text-center cursor-pointer group">
-                <div className="w-16 h-16 bg-slate-800 border border-slate-700 rounded-2xl flex items-center justify-center mb-6 group-hover:border-blue-500/50 group-hover:scale-110 transition-all duration-300">
-                  <UploadCloud className="w-7 h-7 text-slate-400 group-hover:text-blue-400 transition-colors" />
+              <div className="border-2 border-dashed border-slate-700 hover:border-brand-green/60 transition-colors duration-300 bg-slate-800/30 rounded-2xl p-14 flex flex-col items-center justify-center text-center cursor-pointer group">
+                <div className="w-16 h-16 bg-slate-800 border border-slate-700 rounded-2xl flex items-center justify-center mb-6 group-hover:border-brand-green/50 group-hover:scale-110 transition-all duration-300">
+                  <UploadCloud className="w-7 h-7 text-slate-400 group-hover:text-brand-green transition-colors" />
                 </div>
                 <h3 className="text-white font-semibold text-[16px] mb-2">Haz clic para subir imagen</h3>
                 <p className="text-slate-500 text-[13px] tracking-wide">PNG, JPG hasta 5MB</p>
@@ -197,7 +197,7 @@ export default function OnboardingWizard({ onComplete, onCancel }: OnboardingWiz
               transition={{ duration: 0.4 }}
               className="text-center py-10"
             >
-              <div className="w-20 h-20 bg-blue-600/15 border border-blue-500/30 text-blue-400 rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-lg shadow-blue-600/20">
+              <div className="w-20 h-20 bg-brand-green/15 border border-brand-green/30 text-brand-green rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-lg shadow-brand-green/20">
                 <CheckCircle2 className="w-9 h-9" />
               </div>
               <h2 className="text-[28px] font-bold text-white mb-4 tracking-tight">¡Solicitud Enviada!</h2>
@@ -206,7 +206,7 @@ export default function OnboardingWizard({ onComplete, onCancel }: OnboardingWiz
               </p>
               <button
                 onClick={onComplete}
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-4 rounded-xl transition-all duration-300 shadow-lg shadow-blue-600/30"
+                className="w-full bg-brand-green hover:bg-brand-green text-white font-semibold py-4 rounded-xl transition-all duration-300 shadow-lg shadow-brand-green/30"
               >
                 Volver al Inicio
               </button>
@@ -227,7 +227,7 @@ export default function OnboardingWizard({ onComplete, onCancel }: OnboardingWiz
             )}
             <button
               onClick={nextStep}
-              className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-4 rounded-xl transition-all duration-300 shadow-lg shadow-blue-600/30"
+              className="flex-1 bg-brand-green hover:bg-brand-green text-white font-semibold py-4 rounded-xl transition-all duration-300 shadow-lg shadow-brand-green/30"
             >
               {step === 3 ? 'Finalizar Registro' : 'Continuar'}
             </button>

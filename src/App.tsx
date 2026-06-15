@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { Gender } from './data/mockData';
 import Navbar from './components/Navbar';
 import HeroSection from './components/HeroSection';
@@ -11,15 +11,27 @@ import OnboardingWizard from './components/OnboardingWizard';
 import AmericanoLiveView from './components/AmericanoLiveView';
 import AdminDashboard from './components/admin/AdminDashboard';
 import AdminLogin from './components/admin/AdminLogin';
+import PlayerTvSelector from './components/PlayerTvSelector';
 
 export default function App() {
+  const getInitialView = (): 'overview' | 'detail' | 'americanos-live' | 'player-tv' | 'admin-login' | 'admin-dashboard' => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('view') === 'player-tv') return 'player-tv';
+    return 'overview';
+  };
+
   const [gender, setGender] = useState<Gender>('Masculino');
-  const [view, setView] = useState<'overview' | 'detail' | 'onboarding' | 'americanos-live' | 'admin-login' | 'admin-dashboard'>('onboarding');
+  const [view, setView] = useState(getInitialView);
+  const [initialTournamentId] = useState<string | null>(() => new URLSearchParams(window.location.search).get('id'));
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('');
 
   const handleStartOnboarding = () => {
-    setView('onboarding');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setShowOnboarding(true);
+  };
+
+  const handleCloseOnboarding = () => {
+    setShowOnboarding(false);
   };
 
   const handleNavigateHome = () => {
@@ -37,13 +49,18 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleNavigatePlayerTv = () => {
+    setView('player-tv');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleLoginSuccess = () => {
     setView('admin-dashboard');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const rankingView = view === 'onboarding' ? 'overview' : view;
-  const isDashboard = view === 'admin-dashboard' || view === 'admin-login';
+  const rankingView = view;
+  const isDashboard = view === 'admin-dashboard' || view === 'admin-login' || view === 'player-tv';
 
   return (
     <div className="min-h-screen bg-[#0B1120] text-white overflow-x-hidden">
@@ -56,26 +73,32 @@ export default function App() {
         />
       )}
 
-      <main>
-        {view === 'onboarding' ? (
-          <div className="pt-28 pb-20 px-6 min-h-[85vh] flex items-center justify-center relative">
-            {/* Ambient glow */}
-            <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-blue-600/8 rounded-full blur-[150px] pointer-events-none" />
-            
+      {/* MODAL DE ONBOARDING FLOTANTE */}
+      <AnimatePresence>
+        {showOnboarding && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ duration: 0.5 }}
-              className="w-full relative z-10"
-            >
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-[#060c19]/90 backdrop-blur-md"
+              onClick={handleCloseOnboarding}
+            />
+            <div className="relative z-10 w-full max-w-xl">
               <OnboardingWizard
-                onComplete={handleNavigateHome}
-                onCancel={handleNavigateHome}
+                onComplete={handleCloseOnboarding}
+                onCancel={handleCloseOnboarding}
               />
-            </motion.div>
+            </div>
           </div>
-        ) : view === 'americanos-live' ? (
+        )}
+      </AnimatePresence>
+
+      <main>
+        {view === 'americanos-live' ? (
           <AmericanoLiveView />
+        ) : view === 'player-tv' ? (
+          <PlayerTvSelector onNavigateHome={handleNavigateHome} initialTournamentId={initialTournamentId} />
         ) : view === 'admin-login' ? (
           <AdminLogin 
             onLoginSuccess={handleLoginSuccess} 
@@ -90,7 +113,7 @@ export default function App() {
               gender={gender}
               setGender={setGender}
               view={rankingView as 'overview' | 'detail'}
-              setView={(v) => setView(v)}
+              setView={(v) => setView(v as any)}
               selectedCategory={selectedCategory}
               setSelectedCategory={setSelectedCategory}
               onStartOnboarding={handleStartOnboarding}
@@ -98,6 +121,7 @@ export default function App() {
             <AmericanoSection 
               onNavigateLive={handleNavigateAmericanosLive} 
               onNavigateAdmin={handleNavigateAdmin}
+              onNavigatePlayerTv={handleNavigatePlayerTv}
             />
             <NewsSection />
           </>

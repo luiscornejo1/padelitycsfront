@@ -24,9 +24,9 @@ export default function HeroSection({ onStartOnboarding }: HeroSectionProps) {
       </div>
 
       {/* Dark Cinematic Overlay */}
-      <div className="absolute inset-0 bg-black/55 z-[1]" />
+      <div className="absolute inset-0 bg-black/60 z-[1]" />
       {/* Bottom gradient for smooth transition */}
-      <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-[#0B1120] via-[#0B1120]/80 to-transparent z-[1]" />
+      <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-brand-cream via-brand-cream/90 to-transparent z-[1]" />
 
       {/* Social Icons - Left Side */}
       <div className="absolute left-6 top-1/2 -translate-y-1/2 z-20 hidden lg:flex flex-col gap-5">
@@ -49,7 +49,7 @@ export default function HeroSection({ onStartOnboarding }: HeroSectionProps) {
             href={social.href}
             target="_blank"
             rel="noreferrer"
-            className="w-9 h-9 rounded-full border border-white/30 flex items-center justify-center text-white/70 hover:text-white hover:border-white hover:bg-white/10 transition-all duration-300"
+            className="w-9 h-9 rounded-full border border-brand-dark/20 flex items-center justify-center text-brand-cream/70 hover:text-brand-cream hover:border-brand-dark hover:bg-brand-dark/5 transition-all duration-300"
           >
             {social.icon}
           </a>
@@ -65,7 +65,7 @@ export default function HeroSection({ onStartOnboarding }: HeroSectionProps) {
       >
         <motion.h1
           variants={fadeInUp}
-          className="text-[72px] md:text-[110px] lg:text-[140px] font-black text-white leading-[0.9] tracking-tight uppercase"
+          className="text-[72px] md:text-[110px] lg:text-[140px] font-black text-brand-cream leading-[0.9] tracking-tight uppercase"
           style={{ fontFamily: "'Playfair Display', serif" }}
         >
           PADEL
@@ -78,7 +78,7 @@ export default function HeroSection({ onStartOnboarding }: HeroSectionProps) {
             onClick={onStartOnboarding}
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            className="px-12 py-4 border-2 border-white/80 text-white text-[13px] font-bold tracking-[0.25em] uppercase hover:bg-white hover:text-black transition-all duration-500"
+            className="px-12 py-4 border-2 border-white/80 text-brand-cream text-[13px] font-playfair font-bold tracking-[0.25em] uppercase hover:bg-white hover:text-black transition-all duration-500"
           >
             RECLAMAR MI PERFIL
           </motion.button>
@@ -93,21 +93,21 @@ export default function HeroSection({ onStartOnboarding }: HeroSectionProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 1, duration: 0.6 }}
-            className="bg-black/40 backdrop-blur-md border border-white/10 rounded-lg px-5 py-4 hidden md:block"
+            className="bg-black/40 backdrop-blur-md border border-white/20 rounded-lg px-5 py-4 hidden md:block"
           >
-            <div className="flex items-center gap-8 text-[12px] text-white/60">
+            <div className="flex items-center gap-8 text-[12px] text-brand-cream/60">
               <div className="flex items-center gap-2">
-                <MapPin className="w-3 h-3 text-white/40" />
+                <MapPin className="w-3 h-3 text-brand-cream/40" />
                 <span className="font-medium">Próximo torneo:</span>
               </div>
-              <a href="#" className="text-white/60 hover:text-white font-medium transition-colors flex items-center gap-1">
+              <a href="#" className="text-brand-cream/60 hover:text-brand-cream font-medium transition-colors flex items-center gap-1">
                 Saber más <span className="text-[10px]">↗</span>
               </a>
             </div>
-            <p className="text-white font-bold text-[15px] tracking-wide mt-1 uppercase" style={{ fontFamily: "'Playfair Display', serif" }}>
+            <p className="text-brand-cream font-playfair font-bold text-[15px] tracking-wide mt-1 uppercase" style={{ fontFamily: "'Playfair Display', serif" }}>
               Torneo Trujillo Abierto
             </p>
-            <p className="text-white/50 text-[12px] mt-0.5">15/07/2026 — 20/07/2026</p>
+            <p className="text-brand-cream/50 text-[12px] mt-0.5">15/07/2026 — 20/07/2026</p>
           </motion.div>
 
           {/* Right - Tagline */}
@@ -115,7 +115,7 @@ export default function HeroSection({ onStartOnboarding }: HeroSectionProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 1.2, duration: 0.6 }}
-            className="text-white/90 text-[13px] md:text-[15px] font-bold tracking-[0.15em] uppercase text-right max-w-xs leading-relaxed hidden md:block"
+            className="text-brand-cream/90 text-[13px] md:text-[15px] font-playfair font-bold tracking-[0.15em] uppercase text-right max-w-xs leading-relaxed hidden md:block"
             style={{ fontFamily: "'Playfair Display', serif" }}
           >
             EL RANKING OFICIAL

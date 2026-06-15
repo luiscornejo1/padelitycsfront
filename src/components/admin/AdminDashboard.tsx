@@ -1,31 +1,38 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, LayoutDashboard, Wallet, LogOut, Search, Bell, Menu, X } from 'lucide-react';
+import { Trophy, LayoutDashboard, Wallet, LogOut, Search, Bell, Menu, X, PackageOpen } from 'lucide-react';
 import AmericanoLiveView from '../AmericanoLiveView';
 import InscriptionsView from './InscriptionsView';
-import AdminTournamentGenerator from './AdminTournamentGenerator';
+import AmericanosManagerView from './AmericanosManagerView';
 import MicPadelLeagueView from './MicPadelLeagueView';
-import { Shuffle } from 'lucide-react';
+import AcademyMatrixView from './AcademyMatrixView';
+import MajorTournamentView from './MajorTournamentView';
+import InventoryPOSView from './InventoryPOSView';
+import { useLocalStorage } from '../../hooks/useLocalStorage';
+import { Shuffle, CalendarDays, Crown } from 'lucide-react';
 
 interface AdminDashboardProps {
   onNavigateHome: () => void;
 }
 
 export default function AdminDashboard({ onNavigateHome }: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'tournaments' | 'generator' | 'inscriptions' | 'mic_padel_league'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'inventory' | 'gestor_americanos' | 'mic_padel_league' | 'academy' | 'major_tournaments'>('overview');
   const [selectedClub, setSelectedClub] = useState<'urban' | 'xpadel'>('urban');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  const [totalRevenue] = useLocalStorage<number>('padel_total_revenue', 0);
 
   const menuItems = [
     { id: 'overview', label: 'Resumen', icon: LayoutDashboard },
-    { id: 'tournaments', label: 'Torneos en Vivo', icon: Trophy },
-    { id: 'generator', label: 'Generador', icon: Shuffle },
-    { id: 'inscriptions', label: 'Inscripciones (Yape)', icon: Wallet },
-    { id: 'mic_padel_league', label: 'Torneo Mic Padel League', icon: Trophy },
+    { id: 'inventory', label: 'Caja e Inventario', icon: PackageOpen },
+    { id: 'gestor_americanos', label: 'Gestor de Americanos', icon: Trophy },
+    { id: 'mic_padel_league', label: 'Mic Padel League', icon: Trophy },
+    { id: 'major_tournaments', label: 'Torneos Mayores', icon: Crown },
+    { id: 'academy', label: 'Control Academia', icon: CalendarDays },
   ] as const;
 
   return (
-    <div className="min-h-screen bg-[#060c19] text-white flex">
+    <div className="min-h-screen bg-slate-800 text-brand-dark flex">
       {/* Sidebar */}
       <aside className="w-64 bg-[#0A101D] border-r border-slate-800 flex flex-col hidden md:flex shrink-0">
         <div className="h-[72px] flex items-center px-6 border-b border-slate-800">
@@ -62,7 +69,7 @@ export default function AdminDashboard({ onNavigateHome }: AdminDashboardProps) 
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                   isActive 
                   ? 'bg-emerald-600/10 text-emerald-400 border border-emerald-500/20' 
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                  : 'text-brand-gray hover:text-brand-dark hover:bg-white/50'
                 }`}
               >
                 <Icon className="w-5 h-5" />
@@ -75,7 +82,7 @@ export default function AdminDashboard({ onNavigateHome }: AdminDashboardProps) 
         <div className="p-4 border-t border-slate-800">
           <button 
             onClick={onNavigateHome}
-            className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all w-full"
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-brand-gray hover:text-brand-dark hover:bg-white/50 transition-all w-full"
           >
             <LogOut className="w-5 h-5" />
             Salir al inicio
@@ -113,7 +120,7 @@ export default function AdminDashboard({ onNavigateHome }: AdminDashboardProps) 
                 </div>
                 <button 
                   onClick={() => setMobileMenuOpen(false)}
-                  className="p-2 text-slate-400 hover:text-white"
+                  className="p-2 text-brand-gray hover:text-brand-dark"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -147,7 +154,7 @@ export default function AdminDashboard({ onNavigateHome }: AdminDashboardProps) 
                       className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                         isActive 
                         ? 'bg-emerald-600/10 text-emerald-400 border border-emerald-500/20' 
-                        : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                        : 'text-brand-gray hover:text-brand-dark hover:bg-white/50'
                       }`}
                     >
                       <Icon className="w-5 h-5" />
@@ -163,7 +170,7 @@ export default function AdminDashboard({ onNavigateHome }: AdminDashboardProps) 
                     onNavigateHome();
                     setMobileMenuOpen(false);
                   }}
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all w-full"
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-brand-gray hover:text-brand-dark hover:bg-white/50 transition-all w-full"
                 >
                   <LogOut className="w-5 h-5" />
                   Salir al inicio
@@ -181,7 +188,7 @@ export default function AdminDashboard({ onNavigateHome }: AdminDashboardProps) 
           <div className="flex items-center gap-2">
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="p-2 -ml-2 text-slate-400 hover:text-white md:hidden focus:outline-none"
+              className="p-2 -ml-2 text-brand-gray hover:text-brand-dark md:hidden focus:outline-none"
               title="Abrir Menú"
             >
               <Menu className="w-5 h-5" />
@@ -192,14 +199,14 @@ export default function AdminDashboard({ onNavigateHome }: AdminDashboardProps) 
           </div>
           <div className="flex items-center gap-3 md:gap-4">
             <div className="relative hidden sm:block">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-brand-gray absolute left-3 top-1/2 -translate-y-1/2" />
               <input 
                 type="text" 
                 placeholder="Buscar..." 
                 className="bg-slate-900 border border-slate-700 rounded-full pl-9 pr-4 py-1.5 text-sm outline-none focus:border-emerald-500 transition-colors w-40 md:w-64"
               />
             </div>
-            <button className="w-9 h-9 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors relative">
+            <button className="w-9 h-9 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center text-brand-gray hover:text-brand-dark transition-colors relative">
               <Bell className="w-4 h-4" />
               <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
             </button>
@@ -219,20 +226,20 @@ export default function AdminDashboard({ onNavigateHome }: AdminDashboardProps) 
               >
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                   <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl">
-                    <span className="text-slate-400 text-sm font-semibold">Ingresos Totales (Mes)</span>
-                    <h3 className="text-3xl font-bold text-white mt-2">S/ 4,500</h3>
-                    <span className="text-emerald-400 text-xs font-bold">+12% vs mes anterior</span>
+                    <span className="text-brand-gray text-sm font-semibold">Ingresos Reales (Mes)</span>
+                    <h3 className="text-3xl font-bold text-brand-dark mt-2">S/ {totalRevenue.toFixed(2)}</h3>
+                    <span className="text-emerald-400 text-xs font-bold">Generado desde Caja</span>
                   </div>
                   <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl">
-                    <span className="text-slate-400 text-sm font-semibold">Torneos Activos</span>
-                    <h3 className="text-3xl font-bold text-white mt-2">2</h3>
-                    <span className="text-blue-400 text-xs font-bold flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" /> En curso
+                    <span className="text-brand-gray text-sm font-semibold">Torneos Activos</span>
+                    <h3 className="text-3xl font-bold text-brand-dark mt-2">2</h3>
+                    <span className="text-brand-green text-xs font-bold flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-brand-green animate-pulse" /> En curso
                     </span>
                   </div>
                   <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl">
-                    <span className="text-slate-400 text-sm font-semibold">Canchas Disponibles</span>
-                    <h3 className="text-3xl font-bold text-white mt-2">
+                    <span className="text-brand-gray text-sm font-semibold">Canchas Disponibles</span>
+                    <h3 className="text-3xl font-bold text-brand-dark mt-2">
                       {selectedClub === 'urban' ? '4/4' : '3/3'}
                     </h3>
                     <span className="text-slate-500 text-xs font-bold">100% operatividad</span>
@@ -240,48 +247,34 @@ export default function AdminDashboard({ onNavigateHome }: AdminDashboardProps) 
                 </div>
 
                 <div className="bg-slate-900/40 border border-slate-800 p-8 rounded-3xl text-center">
-                  <h3 className="text-lg font-bold text-white mb-2">Bienvenido al Panel de {selectedClub === 'urban' ? 'Urban Padel Hub' : 'X Padel'}</h3>
-                  <p className="text-slate-400 text-sm max-w-md mx-auto">
+                  <h3 className="text-lg font-bold text-brand-dark mb-2">Bienvenido al Panel de {selectedClub === 'urban' ? 'Urban Padel Hub' : 'X Padel'}</h3>
+                  <p className="text-brand-gray text-sm max-w-md mx-auto">
                     Desde aquí puedes gestionar todas las inscripciones pagadas, armar los fixtures de tus americanos, y controlar la fase de grupos en vivo.
                   </p>
                 </div>
               </motion.div>
             )}
 
-            {activeTab === 'tournaments' && (
+            {activeTab === 'inventory' && (
               <motion.div
-                key="tournaments"
+                key="inventory"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
+                className="h-full"
               >
-                {/* Embedded Live View without the top margin since we are inside a dashboard */}
-                <div className="-mt-20"> 
-                  <AmericanoLiveView isEmbedded />
-                </div>
+                <InventoryPOSView />
               </motion.div>
             )}
 
-            {activeTab === 'generator' && (
+            {activeTab === 'gestor_americanos' && (
               <motion.div
-                key="generator"
+                key="gestor_americanos"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
               >
-                <AdminTournamentGenerator />
-              </motion.div>
-            )}
-
-            {activeTab === 'inscriptions' && (
-              <motion.div
-                key="inscriptions"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="p-4 md:p-8"
-              >
-                <InscriptionsView />
+                <AmericanosManagerView />
               </motion.div>
             )}
 
@@ -293,6 +286,28 @@ export default function AdminDashboard({ onNavigateHome }: AdminDashboardProps) 
                 exit={{ opacity: 0, y: -10 }}
               >
                 <MicPadelLeagueView />
+              </motion.div>
+            )}
+
+            {activeTab === 'major_tournaments' && (
+              <motion.div
+                key="major_tournaments"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <MajorTournamentView />
+              </motion.div>
+            )}
+
+            {activeTab === 'academy' && (
+              <motion.div
+                key="academy"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <AcademyMatrixView />
               </motion.div>
             )}
           </AnimatePresence>

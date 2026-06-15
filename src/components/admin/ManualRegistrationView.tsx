@@ -54,7 +54,7 @@ export default function ManualRegistrationView({ isEmbedded }: ManualRegistratio
         </h2>
         
         {/* Toggle Mode */}
-        <div className="flex bg-slate-900/60 p-1.5 rounded-2xl w-full border border-slate-800">
+        <div className="flex bg-[#0F172A] p-1.5 rounded-2xl w-full border border-slate-800/30">
           <button
             onClick={() => setMode('pairs')}
             className={`flex-1 py-2.5 text-[11px] font-bold tracking-widest uppercase transition-all rounded-xl ${
@@ -73,7 +73,7 @@ export default function ManualRegistrationView({ isEmbedded }: ManualRegistratio
           </button>
         </div>
 
-        <form onSubmit={mode === 'pairs' ? handleRegisterPair : handleRegisterPlayer} className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 flex flex-col gap-5">
+        <form onSubmit={mode === 'pairs' ? handleRegisterPair : handleRegisterPlayer} className="bg-[#0F172A] border border-slate-800/30 rounded-3xl p-6 flex flex-col gap-5">
           <p className="text-sm text-slate-400 mb-2">
             {mode === 'pairs' 
               ? 'Añade manualmente parejas que hayan pagado en efectivo o sean invitados especiales.'
@@ -92,7 +92,7 @@ export default function ManualRegistrationView({ isEmbedded }: ManualRegistratio
                   onChange={(e) => setP1Name(e.target.value)}
                   placeholder="Nombre y Apellido"
                   required
-                  className="w-full bg-slate-950/50 border border-slate-700 rounded-xl py-3 px-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 transition-all"
+                  className="w-full bg-[#070D1A] border border-slate-700/50 shadow-[inset_0_2px_8px_rgba(0,0,0,0.6)] rounded-xl py-3 px-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500/70 focus:shadow-[inset_0_2px_8px_rgba(0,0,0,0.6),0_0_15px_rgba(16,185,129,0.15)] transition-all"
                 />
               </div>
               <div className="flex flex-col gap-2">
@@ -105,7 +105,7 @@ export default function ManualRegistrationView({ isEmbedded }: ManualRegistratio
                   onChange={(e) => setP2Name(e.target.value)}
                   placeholder="Nombre y Apellido"
                   required
-                  className="w-full bg-slate-950/50 border border-slate-700 rounded-xl py-3 px-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 transition-all"
+                  className="w-full bg-[#070D1A] border border-slate-700/50 shadow-[inset_0_2px_8px_rgba(0,0,0,0.6)] rounded-xl py-3 px-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500/70 focus:shadow-[inset_0_2px_8px_rgba(0,0,0,0.6),0_0_15px_rgba(16,185,129,0.15)] transition-all"
                 />
               </div>
             </>
@@ -120,7 +120,7 @@ export default function ManualRegistrationView({ isEmbedded }: ManualRegistratio
                 onChange={(e) => setPlayerName(e.target.value)}
                 placeholder="Nombre y Apellido"
                 required
-                className="w-full bg-slate-950/50 border border-slate-700 rounded-xl py-3 px-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 transition-all"
+                className="w-full bg-[#0B1120] border border-slate-800/50 shadow-inner focus:shadow-[0_0_15px_rgba(16,185,129,0.15)] focus:border-emerald-500/50 rounded-xl py-3 px-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 transition-all"
               />
             </div>
           )}
@@ -134,7 +134,7 @@ export default function ManualRegistrationView({ isEmbedded }: ManualRegistratio
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as Category)}
-                className="w-full bg-slate-950/50 border border-slate-700 rounded-xl py-3 pl-11 pr-4 text-white appearance-none focus:outline-none focus:border-emerald-500 transition-all"
+                className="w-full bg-[#070D1A] border border-slate-700/50 shadow-[inset_0_2px_8px_rgba(0,0,0,0.6)] rounded-xl py-3 pl-11 pr-4 text-white appearance-none focus:outline-none focus:border-emerald-500/70 focus:shadow-[inset_0_2px_8px_rgba(0,0,0,0.6),0_0_15px_rgba(16,185,129,0.15)] transition-all"
               >
                 {CATEGORIES.map(c => (
                   <option key={c} value={c}>{c} Categoría</option>
@@ -158,108 +158,76 @@ export default function ManualRegistrationView({ isEmbedded }: ManualRegistratio
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-white flex items-center gap-3">
             {mode === 'pairs' ? 'Parejas Manuales' : 'Jugadores Manuales'}
-            <span className="bg-slate-800 text-slate-300 text-xs font-bold px-3 py-1 rounded-full">
+            <span className="bg-[#0B1120] text-slate-300 text-xs font-bold px-3 py-1 rounded-full">
               {mode === 'pairs' ? registeredPairs.length : registeredPlayers.length} Totales
             </span>
           </h2>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden">
+        <div className="flex flex-col gap-3">
           {(mode === 'pairs' ? registeredPairs.length : registeredPlayers.length) === 0 ? (
-            <div className="p-12 flex flex-col items-center justify-center text-slate-500">
+            <div className="p-12 flex flex-col items-center justify-center text-slate-500 bg-[#0F172A] rounded-2xl border border-slate-800/20">
               <Users className="w-12 h-12 mb-4 opacity-20" />
               <p>Aún no hay {mode === 'pairs' ? 'parejas' : 'jugadores'} registrados manualmente.</p>
             </div>
           ) : (
-            <table className="w-full text-left">
-              <thead className="bg-slate-900/80 border-b border-slate-800 text-xs uppercase tracking-widest text-slate-400 font-bold">
-                <tr>
-                  <th className="p-4">Integrantes</th>
-                  <th className="p-4">Categoría</th>
-                  <th className="p-4">Registro</th>
-                  <th className="p-4 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                <AnimatePresence>
-                  {mode === 'pairs' 
-                    ? registeredPairs.map((pair) => (
-                      <motion.tr 
-                        key={pair.id}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 10 }}
-                        className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors"
+            <AnimatePresence>
+              {mode === 'pairs'
+                ? registeredPairs.map((pair) => (
+                  <motion.div
+                    key={pair.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.96 }}
+                    className="flex items-center justify-between gap-4 bg-[#0F172A] rounded-2xl px-5 py-4 border border-transparent shadow-lg hover:-translate-y-0.5 hover:shadow-xl hover:border-slate-700/40 transition-all duration-200 group"
+                  >
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-white">{pair.p1Name}</span>
+                      <span className="text-sm font-bold text-white">{pair.p2Name}</span>
+                    </div>
+                    <div className="flex items-center gap-4 ml-auto">
+                      <span className="text-xs font-bold bg-[#0B1120] text-slate-400 px-3 py-1.5 rounded-lg flex items-center gap-1.5 border border-slate-800/40">
+                        <Trophy className="w-3 h-3 text-slate-500" />
+                        {pair.category}
+                      </span>
+                      <span className="text-xs font-mono text-slate-500">{pair.date}</span>
+                      <button
+                        onClick={() => handleDelete(pair.id, true)}
+                        className="p-2 bg-transparent border border-transparent text-slate-600 hover:bg-red-500/15 hover:border-red-500/30 hover:text-red-400 rounded-xl transition-all"
+                        title="Eliminar registro"
                       >
-                        <td className="p-4">
-                          <div className="flex flex-col">
-                            <span className="text-sm font-bold text-white flex items-center gap-2">
-                              {pair.p1Name}
-                            </span>
-                            <span className="text-sm font-bold text-white flex items-center gap-2">
-                              {pair.p2Name}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <span className="text-xs font-bold bg-slate-800 text-slate-300 px-2 py-1 rounded flex items-center gap-1 w-max">
-                            <Trophy className="w-3 h-3 text-slate-400" />
-                            {pair.category}
-                          </span>
-                        </td>
-                        <td className="p-4 text-xs font-mono text-slate-500">
-                          {pair.date}
-                        </td>
-                        <td className="p-4 text-right">
-                          <button 
-                            onClick={() => handleDelete(pair.id, true)}
-                            className="p-2 bg-red-600/10 text-red-400 hover:bg-red-600/20 rounded-lg transition-colors inline-flex"
-                            title="Eliminar registro"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </motion.tr>
-                    ))
-                    : registeredPlayers.map((player) => (
-                      <motion.tr 
-                        key={player.id}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 10 }}
-                        className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors"
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </motion.div>
+                ))
+                : registeredPlayers.map((player) => (
+                  <motion.div
+                    key={player.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.96 }}
+                    className="flex items-center justify-between gap-4 bg-[#0F172A] rounded-2xl px-5 py-4 border border-transparent shadow-lg hover:-translate-y-0.5 hover:shadow-xl hover:border-slate-700/40 transition-all duration-200 group"
+                  >
+                    <span className="text-sm font-bold text-white">{player.name}</span>
+                    <div className="flex items-center gap-4 ml-auto">
+                      <span className="text-xs font-bold bg-[#0B1120] text-slate-400 px-3 py-1.5 rounded-lg flex items-center gap-1.5 border border-slate-800/40">
+                        <Trophy className="w-3 h-3 text-slate-500" />
+                        {player.category}
+                      </span>
+                      <span className="text-xs font-mono text-slate-500">{player.date}</span>
+                      <button
+                        onClick={() => handleDelete(player.id, false)}
+                        className="p-2 bg-transparent border border-transparent text-slate-600 hover:bg-red-500/15 hover:border-red-500/30 hover:text-red-400 rounded-xl transition-all"
+                        title="Eliminar registro"
                       >
-                        <td className="p-4">
-                          <div className="flex flex-col">
-                            <span className="text-sm font-bold text-white flex items-center gap-2">
-                              {player.name}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <span className="text-xs font-bold bg-slate-800 text-slate-300 px-2 py-1 rounded flex items-center gap-1 w-max">
-                            <Trophy className="w-3 h-3 text-slate-400" />
-                            {player.category}
-                          </span>
-                        </td>
-                        <td className="p-4 text-xs font-mono text-slate-500">
-                          {player.date}
-                        </td>
-                        <td className="p-4 text-right">
-                          <button 
-                            onClick={() => handleDelete(player.id, false)}
-                            className="p-2 bg-red-600/10 text-red-400 hover:bg-red-600/20 rounded-lg transition-colors inline-flex"
-                            title="Eliminar registro"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </motion.tr>
-                    ))
-                  }
-                </AnimatePresence>
-              </tbody>
-            </table>
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </motion.div>
+                ))
+              }
+            </AnimatePresence>
           )}
         </div>
       </div>
