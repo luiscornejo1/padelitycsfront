@@ -24,7 +24,7 @@ export interface CourtGroup {
 
 export function generateAmericanoFixture(
   inscriptions: any[], 
-  format: 'americano' | 'mexicano' | 'romano' | 'personalizado',
+  _format: 'americano' | 'mexicano' | 'romano' | 'personalizado',
   numCourts: number,
   customPairs: number
 ): CourtGroup[] {

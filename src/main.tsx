@@ -4,11 +4,15 @@ import './index.css'
 import App from './App.tsx'
 
 import { TournamentProvider } from './context/TournamentContext'
+import { AuthProvider } from './context/AuthContext'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <TournamentProvider>
-      <App />
-    </TournamentProvider>
+    {/* AuthProvider wraps everything — provee sesión y perfil a toda la app */}
+    <AuthProvider>
+      <TournamentProvider>
+        <App />
+      </TournamentProvider>
+    </AuthProvider>
   </StrictMode>,
 )

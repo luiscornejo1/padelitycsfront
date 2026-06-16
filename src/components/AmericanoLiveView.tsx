@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, Users, Calendar, Crown, Skull, ArrowUpCircle, X, Check, Save, RotateCcw, ChevronRight, Settings2, ShieldAlert, Trash2, QrCode, Tv, Swords, AlertCircle, RefreshCw } from 'lucide-react';
+import { Trophy, Users, Calendar, Crown, Skull, ArrowUpCircle, Check, ChevronRight, Trash2, QrCode, Tv, Swords } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { fadeInUp, staggerContainer, staggerItem } from '../lib/animations';
 import BracketGenerator from './BracketGenerator';
-import { getStandings, getOverallClassified, getStandingsByGroup } from '../lib/standingsLogic';
+import { getOverallClassified, getStandingsByGroup } from '../lib/standingsLogic';
 
 import { useTournaments } from '../context/TournamentContext';
 

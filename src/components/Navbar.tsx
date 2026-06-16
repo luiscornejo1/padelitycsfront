@@ -7,9 +7,10 @@ interface NavbarProps {
   onStartOnboarding: () => void;
   onNavigateAmericanosLive: () => void;
   onNavigateAdmin?: () => void;
+  onNavigatePadelCash: () => void;
 }
 
-export default function Navbar({ onNavigateHome, onStartOnboarding, onNavigateAmericanosLive, onNavigateAdmin }: NavbarProps) {
+export default function Navbar({ onNavigateHome, onStartOnboarding, onNavigateAmericanosLive, onNavigateAdmin, onNavigatePadelCash }: NavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isNavHovered, setIsNavHovered] = useState(false);
 
@@ -94,6 +95,12 @@ export default function Navbar({ onNavigateHome, onStartOnboarding, onNavigateAm
               </button>
             )}
             <button
+              onClick={onNavigatePadelCash}
+              className="text-[11px] font-bold text-yellow-400 tracking-[0.15em] uppercase hover:text-yellow-300 transition-colors duration-300"
+            >
+              Padel-Cash
+            </button>
+            <button
               onClick={onStartOnboarding}
               className="text-[11px] font-bold text-brand-dark/70 tracking-[0.15em] uppercase hover:text-brand-dark transition-colors duration-300"
             >
@@ -163,6 +170,15 @@ export default function Navbar({ onNavigateHome, onStartOnboarding, onNavigateAm
                   Soy Organizador
                 </button>
               )}
+              <button
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  onNavigatePadelCash();
+                }}
+                className="block w-full text-yellow-400 hover:text-yellow-300 font-bold text-[13px] tracking-[0.2em] uppercase py-2 transition-colors"
+              >
+                Padel-Cash
+              </button>
               <button
                 onClick={() => {
                   setIsMenuOpen(false);

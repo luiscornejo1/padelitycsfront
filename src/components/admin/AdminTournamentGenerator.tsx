@@ -32,7 +32,7 @@ interface CourtGroup {
 
 
 export default function AdminTournamentGenerator() {
-  const { registeredPairs, registeredPlayers, createTournament } = useTournaments();
+  const { registeredPlayers, createTournament } = useTournaments();
   const [inscriptions] = useLocalStorage<any[]>('americano-inscriptions-v2', []);
   const confirmedPairs = inscriptions.filter(i => i.status === 'approved' && (i.p2Name || '').trim() !== '');
   const [activeTab, setActiveTab] = useState<'generator' | 'inscriptions' | 'communications'>('generator');

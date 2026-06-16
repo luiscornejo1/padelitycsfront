@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocalStorage } from '../../hooks/useLocalStorage';
-import { PackageOpen, Calculator, AlertCircle, CheckCircle2, DollarSign, Activity, X, Edit, Plus, Save } from 'lucide-react';
+import { PackageOpen, Calculator, AlertCircle, CheckCircle2, DollarSign, X, Edit, Plus, Save } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface Product {
@@ -24,7 +24,7 @@ export default function InventoryPOSView() {
     { id: '6', name: 'Barra Energética', price: 6, initialStock: 15, currentStock: 3, minStock: 5, category: 'Snacks', image: '🍫' },
   ]);
 
-  const [totalRevenue, setTotalRevenue] = useLocalStorage<number>('padel_total_revenue', 0);
+  const [, setTotalRevenue] = useLocalStorage<number>('padel_total_revenue', 0);
 
   const [isClosingShift, setIsClosingShift] = useState(false);
   const [isManaging, setIsManaging] = useState(false);

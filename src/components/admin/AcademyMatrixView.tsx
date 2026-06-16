@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Users, Clock, Calendar, Check, X, User } from 'lucide-react';
+import { Plus, Clock, Calendar, Check, X, User } from 'lucide-react';
 
 interface ClassSession {
   id: string;

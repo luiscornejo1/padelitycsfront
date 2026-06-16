@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Trophy, Calendar, Users, ChevronRight } from 'lucide-react';
 import { useTournaments } from '../../context/TournamentContext';

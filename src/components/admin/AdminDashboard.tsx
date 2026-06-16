@@ -1,22 +1,22 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy, LayoutDashboard, Wallet, LogOut, Search, Bell, Menu, X, PackageOpen } from 'lucide-react';
-import AmericanoLiveView from '../AmericanoLiveView';
-import InscriptionsView from './InscriptionsView';
+
 import AmericanosManagerView from './AmericanosManagerView';
 import MicPadelLeagueView from './MicPadelLeagueView';
 import AcademyMatrixView from './AcademyMatrixView';
 import MajorTournamentView from './MajorTournamentView';
 import InventoryPOSView from './InventoryPOSView';
+import PadelCashAdminView from './PadelCashAdminView';
 import { useLocalStorage } from '../../hooks/useLocalStorage';
-import { Shuffle, CalendarDays, Crown } from 'lucide-react';
+import { CalendarDays, Crown } from 'lucide-react';
 
 interface AdminDashboardProps {
   onNavigateHome: () => void;
 }
 
 export default function AdminDashboard({ onNavigateHome }: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'inventory' | 'gestor_americanos' | 'mic_padel_league' | 'academy' | 'major_tournaments'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'inventory' | 'gestor_americanos' | 'mic_padel_league' | 'academy' | 'major_tournaments' | 'padel_cash_payments'>('overview');
   const [selectedClub, setSelectedClub] = useState<'urban' | 'xpadel'>('urban');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
@@ -25,6 +25,7 @@ export default function AdminDashboard({ onNavigateHome }: AdminDashboardProps) 
   const menuItems = [
     { id: 'overview', label: 'Resumen', icon: LayoutDashboard },
     { id: 'inventory', label: 'Caja e Inventario', icon: PackageOpen },
+    { id: 'padel_cash_payments', label: 'Padel-Cash (Pagos)', icon: Wallet },
     { id: 'gestor_americanos', label: 'Gestor de Americanos', icon: Trophy },
     { id: 'mic_padel_league', label: 'Mic Padel League', icon: Trophy },
     { id: 'major_tournaments', label: 'Torneos Mayores', icon: Crown },
@@ -308,6 +309,18 @@ export default function AdminDashboard({ onNavigateHome }: AdminDashboardProps) 
                 exit={{ opacity: 0, y: -10 }}
               >
                 <AcademyMatrixView />
+              </motion.div>
+            )}
+
+            {activeTab === 'padel_cash_payments' && (
+              <motion.div
+                key="padel_cash_payments"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="p-4 md:p-8"
+              >
+                <PadelCashAdminView />
               </motion.div>
             )}
           </AnimatePresence>

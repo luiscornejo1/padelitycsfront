@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { Category } from '../data/mockData';
+import type { PadelCashUser, YapePaymentRequest, YapeBookingDetails, PadelCashCoupon } from '../types/padelCashTypes';
 
 export interface RegisteredPair {
   id: string;
@@ -56,6 +57,17 @@ interface TournamentContextType {
   
   addInscriptionToTournament: (tournamentId: number, p1Name: string, p2Name: string, category: Category) => void;
   removeInscriptionFromTournament: (tournamentId: number, pairId: string) => void;
+
+  // Padel-Cash reward and payment validation system
+  padelCashUsers: PadelCashUser[];
+  yapePayments: YapePaymentRequest[];
+  currentPadelUser: PadelCashUser | null;
+  submitYapePayment: (userId: string, bookingDetails: YapeBookingDetails, screenshotUrl: string) => void;
+  approveYapePayment: (paymentId: string) => void;
+  rejectYapePayment: (paymentId: string, reason: string) => void;
+  cancelPaidBooking: (paymentId: string) => void;
+  claimPointsCoupon: (userId: string) => void;
+  setCurrentPadelUserById: (userId: string) => void;
 }
 
 const TournamentContext = createContext<TournamentContextType | undefined>(undefined);
@@ -65,11 +77,18 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [registeredPlayers, setRegisteredPlayers] = useState<RegisteredPlayer[]>([]);
   const [activeTournaments, setActiveTournaments] = useState<Tournament[]>([]);
 
+  // Padel-Cash reward and payment validation states
+  const [padelCashUsers, setPadelCashUsers] = useState<PadelCashUser[]>([]);
+  const [yapePayments, setYapePayments] = useState<YapePaymentRequest[]>([]);
+  const [currentPadelUser, setCurrentPadelUser] = useState<PadelCashUser | null>(null);
+
   // Load from LocalStorage on mount
   useEffect(() => {
     const storedPairs = localStorage.getItem('padelitycs_pairs');
     const storedPlayers = localStorage.getItem('padelitycs_players');
     const storedTournaments = localStorage.getItem('padelitycs_tournaments');
+    const storedCashUsers = localStorage.getItem('padelitycs_cash_users');
+    const storedYapePayments = localStorage.getItem('padelitycs_yape_payments');
 
     const safeParse = (data: string | null, fallback: any) => {
       if (!data) return fallback;
@@ -101,11 +120,70 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const parsedTourneys = safeParse(storedTournaments, initialTourneys);
     setActiveTournaments(parsedTourneys);
     if (parsedTourneys === initialTourneys) localStorage.setItem('padelitycs_tournaments', JSON.stringify(initialTourneys));
+
+    // Initialize mock cash users and payments
+    const initialCashUsers: PadelCashUser[] = [
+      {
+        id: 'p1', // Carlos Díaz
+        name: 'Carlos Díaz',
+        phone: '987654321',
+        points: 40,
+        completedReservationsCount: 8, // Close to Plata (10)
+        level: 'bronce',
+        coupons: []
+      },
+      {
+        id: 'p2',
+        name: 'Roberto Gómez',
+        phone: '912345678',
+        points: 120,
+        completedReservationsCount: 15, // Plata (10-24)
+        level: 'plata',
+        coupons: [{ code: 'DESC-100', value: 50, type: 'discount', isUsed: false, dateCreated: 'Ayer' }]
+      },
+      {
+        id: 'p3',
+        name: 'Milagros Soto',
+        phone: '955443322',
+        points: 80,
+        completedReservationsCount: 30, // Oro (25+)
+        level: 'oro',
+        coupons: []
+      }
+    ];
+    const parsedCashUsers = safeParse(storedCashUsers, initialCashUsers);
+    setPadelCashUsers(parsedCashUsers);
+    if (!storedCashUsers) localStorage.setItem('padelitycs_cash_users', JSON.stringify(initialCashUsers));
+
+    const initialYapePayments: YapePaymentRequest[] = [
+      {
+        id: 'YAP-982',
+        userId: 'p1',
+        userName: 'Carlos Díaz',
+        bookingDetails: {
+          court: 'Cancha 1 (Panorámica)',
+          date: '2026-06-17',
+          time: '19:00 - 20:30',
+          originalPrice: 80,
+          discountedPrice: 72
+        },
+        screenshotUrl: 'https://placehold.co/400x800/22c55e/ffffff?text=Yape+S/+72.00\\nCarlos+Diaz\\nOperacion:+99812',
+        status: 'pending',
+        dateCreated: 'Hace 5 min'
+      }
+    ];
+    const parsedYapePayments = safeParse(storedYapePayments, initialYapePayments);
+    setYapePayments(parsedYapePayments);
+    if (!storedYapePayments) localStorage.setItem('padelitycs_yape_payments', JSON.stringify(initialYapePayments));
+
+    // Set current active user to Carlos Díaz for client view
+    const current = parsedCashUsers.find((u: PadelCashUser) => u.id === 'p1') || parsedCashUsers[0] || null;
+    setCurrentPadelUser(current);
   }, []);
 
   // Save changes to LocalStorage
   useEffect(() => {
-    if (registeredPairs.length > 0) { // Avoid clearing on first render before load
+    if (registeredPairs.length > 0) {
       localStorage.setItem('padelitycs_pairs', JSON.stringify(registeredPairs));
     }
   }, [registeredPairs]);
@@ -121,6 +199,37 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       localStorage.setItem('padelitycs_tournaments', JSON.stringify(activeTournaments));
     }
   }, [activeTournaments]);
+
+  useEffect(() => {
+    if (padelCashUsers.length > 0) {
+      localStorage.setItem('padelitycs_cash_users', JSON.stringify(padelCashUsers));
+    }
+  }, [padelCashUsers]);
+
+  useEffect(() => {
+    if (yapePayments.length > 0) {
+      localStorage.setItem('padelitycs_yape_payments', JSON.stringify(yapePayments));
+    }
+  }, [yapePayments]);
+
+  // Sincronización en tiempo real entre pestañas (Storage Event)
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'padelitycs_cash_users' && e.newValue) {
+        const parsed = JSON.parse(e.newValue);
+        setPadelCashUsers(parsed);
+        setCurrentPadelUser(prev => {
+          if (!prev) return null;
+          return parsed.find((u: PadelCashUser) => u.id === prev.id) || prev;
+        });
+      }
+      if (e.key === 'padelitycs_yape_payments' && e.newValue) {
+        setYapePayments(JSON.parse(e.newValue));
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
 
   const registerPair = (p1Name: string, p2Name: string, category: Category) => {
     const newPair: RegisteredPair = {
@@ -171,7 +280,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       numGroups,
       timeElapsed: '0m',
       participants: participants || [],
-      inscriptions: [], // initialize empty
+      inscriptions: [],
       fixture,
       matchScores: {},
       currentRound: 1,
@@ -270,6 +379,135 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }));
   };
 
+  // Padel-Cash reward operations
+  const submitYapePayment = (userId: string, bookingDetails: YapeBookingDetails, screenshotUrl: string) => {
+    const user = padelCashUsers.find(u => u.id === userId);
+    if (!user) return;
+
+    const newPayment: YapePaymentRequest = {
+      id: `YAP-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+      userId,
+      userName: user.name,
+      bookingDetails,
+      screenshotUrl,
+      status: 'pending',
+      dateCreated: 'Hace un momento'
+    };
+
+    setYapePayments(prev => [newPayment, ...prev]);
+  };
+
+  const approveYapePayment = (paymentId: string) => {
+    const payment = yapePayments.find(p => p.id === paymentId);
+    if (!payment || payment.status !== 'pending') return;
+
+    const targetUserId = payment.userId;
+    
+    setYapePayments(prev => prev.map(p => 
+      p.id === paymentId ? { ...p, status: 'approved' } : p
+    ));
+
+    setPadelCashUsers(prev => prev.map(user => {
+      if (user.id === targetUserId) {
+        const newReservations = user.completedReservationsCount + 1;
+        let newLevel = user.level;
+        if (newReservations >= 25) newLevel = 'oro';
+        else if (newReservations >= 10) newLevel = 'plata';
+
+        const updatedUser: PadelCashUser = {
+          ...user,
+          points: user.points + 10,
+          completedReservationsCount: newReservations,
+          level: newLevel
+        };
+
+        setCurrentPadelUser(curr => (curr && curr.id === targetUserId) ? updatedUser : curr);
+        return updatedUser;
+      }
+      return user;
+    }));
+  };
+
+  const rejectYapePayment = (paymentId: string, reason: string) => {
+    const payment = yapePayments.find(p => p.id === paymentId);
+    if (!payment || payment.status !== 'pending') return;
+
+    setYapePayments(prev => prev.map(p => 
+      p.id === paymentId ? { ...p, status: 'rejected', rejectionReason: reason } : p
+    ));
+  };
+
+  const cancelPaidBooking = (paymentId: string) => {
+    const payment = yapePayments.find(p => p.id === paymentId);
+    if (!payment || payment.status !== 'approved') return;
+
+    const targetUserId = payment.userId;
+    const refundValue = payment.bookingDetails.discountedPrice;
+
+    setYapePayments(prev => prev.map(p => 
+      p.id === paymentId ? { ...p, status: 'rejected', rejectionReason: 'Reserva cancelada (Reembolso Crédito)' } : p
+    ));
+
+    setPadelCashUsers(prev => prev.map(user => {
+      if (user.id === targetUserId) {
+        const newCoupon: PadelCashCoupon = {
+          code: `CRED-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
+          value: refundValue,
+          type: 'credit_virtual',
+          isUsed: false,
+          dateCreated: 'Justo ahora'
+        };
+        
+        const newReservations = Math.max(0, user.completedReservationsCount - 1);
+        let newLevel = user.level;
+        if (newReservations < 10) newLevel = 'bronce';
+        else if (newReservations < 25) newLevel = 'plata';
+
+        const updatedUser: PadelCashUser = {
+          ...user,
+          points: Math.max(0, user.points - 10), // Deduct points
+          completedReservationsCount: newReservations,
+          level: newLevel,
+          coupons: [newCoupon, ...user.coupons]
+        };
+
+        setCurrentPadelUser(curr => (curr && curr.id === targetUserId) ? updatedUser : curr);
+        return updatedUser;
+      }
+      return user;
+    }));
+  };
+
+  const claimPointsCoupon = (userId: string) => {
+    setPadelCashUsers(prev => prev.map(user => {
+      if (user.id === userId && user.points >= 100) {
+        const newCoupon: PadelCashCoupon = {
+          code: `CUP-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
+          value: 50,
+          type: 'discount',
+          isUsed: false,
+          dateCreated: 'Justo ahora'
+        };
+        const updatedUser: PadelCashUser = {
+          ...user,
+          points: user.points - 100,
+          coupons: [newCoupon, ...user.coupons]
+        };
+
+        setCurrentPadelUser(curr => (curr && curr.id === userId) ? updatedUser : curr);
+        return updatedUser;
+      }
+      return user;
+    }));
+  };
+
+  const setCurrentPadelUserById = (userId: string) => {
+    const user = padelCashUsers.find(u => u.id === userId);
+    if (user) {
+      setCurrentPadelUser(user);
+    }
+  };
+
   return (
     <TournamentContext.Provider value={{
       registeredPairs,
@@ -286,7 +524,17 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       confirmBracketPhase,
       updateMatchScore,
       addInscriptionToTournament,
-      removeInscriptionFromTournament
+      removeInscriptionFromTournament,
+      
+      padelCashUsers,
+      yapePayments,
+      currentPadelUser,
+      submitYapePayment,
+      approveYapePayment,
+      rejectYapePayment,
+      cancelPaidBooking,
+      claimPointsCoupon,
+      setCurrentPadelUserById
     }}>
       {children}
     </TournamentContext.Provider>

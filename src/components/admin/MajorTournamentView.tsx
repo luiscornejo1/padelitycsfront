@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Trophy, Users, Settings, Target, ChevronRight, Download, Share2, CreditCard, CheckCircle2, XCircle, Activity, Calendar, X, Eye, MessageSquare, Copy } from 'lucide-react';
+import { Trophy, Users, Settings, Target, ChevronRight, Download, Share2, CreditCard, CheckCircle2, XCircle, Activity, X, Eye, MessageSquare, Copy } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import BracketGenerator from '../BracketGenerator';
 

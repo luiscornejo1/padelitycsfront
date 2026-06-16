@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Trophy, Users, User, Play, Plus, Trash2, Award, 
-  RefreshCw, CheckCircle, Swords, UserPlus, Info, 
+  RefreshCw, CheckCircle, UserPlus, 
   Zap, AlertTriangle, Flag, Star, X
 } from 'lucide-react';
 
@@ -47,7 +47,7 @@ export default function MicPadelLeagueView() {
   const [scoreT2, setScoreT2] = useState<string>('');
   const [validationError, setValidationError] = useState<string | null>(null);
   const [showFinishModal, setShowFinishModal] = useState(false);
-  const [rotationAlert, setRotationAlert] = useState<string | null>(null);
+  const [, setRotationAlert] = useState<string | null>(null);
 
   // Load from local storage on mount
   useEffect(() => {
@@ -353,7 +353,7 @@ export default function MicPadelLeagueView() {
   const executeNextMatch = (
     exitingPlayerId: string, 
     exitSide: 'A' | 'B', 
-    winnerSide: 'A' | 'B',
+    _winnerSide: 'A' | 'B',
     selectionType: 'auto' | 'manual',
     updatedMatches: MPLMatch[],
     currentHistory: Record<string, number>

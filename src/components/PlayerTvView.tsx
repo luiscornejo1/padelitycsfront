@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
 import { useTournaments } from '../context/TournamentContext';
 import { Trophy, Tv, Users, LayoutGrid, ChevronLeft, Activity, Medal, ChevronDown, ChevronUp } from 'lucide-react';
 import { getOverallClassified } from '../lib/standingsLogic';

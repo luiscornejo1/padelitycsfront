@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTournaments } from '../context/TournamentContext';
 import PlayerTvView from './PlayerTvView';
 import { Trophy, Tv, PlayCircle, Loader2 } from 'lucide-react';

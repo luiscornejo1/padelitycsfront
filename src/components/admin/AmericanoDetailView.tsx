@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Settings, Users, Trophy, LayoutGrid } from 'lucide-react';
 import { useTournaments } from '../../context/TournamentContext';
@@ -27,7 +27,7 @@ export default function AmericanoDetailView({ tournamentId, onBack, onTournament
 
   const [name, setName] = useState(tournament?.name || '');
   const [format, setFormat] = useState(tournament?.format || 'americano');
-  const [rotationRule, setRotationRule] = useState<'equitativo' | 'rey_de_cancha'>('equitativo');
+  const [rotationRule] = useState<'equitativo' | 'rey_de_cancha'>('equitativo');
   const [courts, setCourts] = useState(tournament?.courts || 4);
   const [pairs, setPairs] = useState(tournament?.pairs || 12);
   const [numGroups, setNumGroups] = useState(tournament?.numGroups || 4);
@@ -58,12 +58,12 @@ export default function AmericanoDetailView({ tournamentId, onBack, onTournament
     }
   };
 
-  const tabs = [
-    { id: 'config', label: 'Configuración', icon: Settings },
+  const tabs: { id: 'config' | 'inscriptions' | 'live_groups' | 'brackets', label: string, icon: any, disabled: boolean }[] = [
+    { id: 'config', label: 'Configuración', icon: Settings, disabled: false },
     { id: 'inscriptions', label: 'Inscripciones', icon: Users, disabled: isNew },
     { id: 'live_groups', label: 'Fase de Grupos (En Vivo)', icon: Trophy, disabled: isNew },
     { id: 'brackets', label: 'Llaves (Brackets)', icon: LayoutGrid, disabled: isNew },
-  ] as const;
+  ];
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -93,7 +93,7 @@ export default function AmericanoDetailView({ tournamentId, onBack, onTournament
           return (
             <button
               key={tab.id}
-              onClick={() => !isDisabled && setActiveTab(tab.id as any)}
+              onClick={() => !isDisabled && setActiveTab(tab.id)}
               disabled={isDisabled}
               className={`flex-1 min-w-[200px] flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium transition-all ${
                 isActive 
@@ -260,7 +260,7 @@ export default function AmericanoDetailView({ tournamentId, onBack, onTournament
                       (document.getElementById('new-p2') as HTMLInputElement).value = '';
                     }
                   }}
-                  disabled={tournament && tournament.inscriptions && tournament.inscriptions.length >= tournament.pairs}
+                  disabled={!!(tournament && tournament.inscriptions && tournament.inscriptions.length >= tournament.pairs)}
                   className={`w-full py-3 font-bold rounded-lg transition-colors mt-4 ${
                     tournament && tournament.inscriptions && tournament.inscriptions.length >= tournament.pairs
                     ? 'bg-slate-700 text-slate-500 cursor-not-allowed'

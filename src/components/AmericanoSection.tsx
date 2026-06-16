@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ArrowRight, Tv } from 'lucide-react';
+import { Tv } from 'lucide-react';
 import { staggerContainer, staggerItem } from '../lib/animations';
 
 interface AmericanoSectionProps {
