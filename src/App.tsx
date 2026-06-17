@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Gender } from './data/mockData';
 import Navbar from './components/Navbar';
@@ -15,18 +15,15 @@ import PlayerTvSelector from './components/PlayerTvSelector';
 import PadelCashPortal from './components/PadelCashPortal';
 import AuthModal from './components/AuthModal';
 import { useAuth } from './context/AuthContext';
+import { getInitialView, type ViewState } from './utils/viewUtils';
 
 export default function App() {
-  const { user, isLoading } = useAuth();
-
-  const getInitialView = (): 'overview' | 'detail' | 'americanos-live' | 'player-tv' | 'admin-login' | 'admin-dashboard' | 'padel-cash' => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('view') === 'player-tv') return 'player-tv';
-    return 'overview';
-  };
+  const { user, isLoading, isAdmin } = useAuth();
 
   const [gender, setGender] = useState<Gender>('Masculino');
-  const [view, setView] = useState(getInitialView);
+  const [view, setView] = useState<ViewState>(() => 
+    getInitialView(new URLSearchParams(window.location.search), localStorage.getItem('padelitycs_view'))
+  );
   const [initialTournamentId] = useState<string | null>(() => new URLSearchParams(window.location.search).get('id'));
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -63,6 +60,20 @@ export default function App() {
     setView('admin-dashboard');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  useEffect(() => {
+    localStorage.setItem('padelitycs_view', view);
+  }, [view]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (view === 'admin-login' && user && isAdmin) {
+        setView('admin-dashboard');
+      } else if (view === 'admin-dashboard' && (!user || !isAdmin)) {
+        setView('admin-login');
+      }
+    }
+  }, [view, user, isAdmin, isLoading]);
 
   const rankingView = view;
   const isDashboard = view === 'admin-dashboard' || view === 'admin-login' || view === 'player-tv';
