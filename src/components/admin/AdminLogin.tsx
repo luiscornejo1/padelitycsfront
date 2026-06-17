@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, Lock, User, ArrowRight, ShieldCheck } from 'lucide-react';
 import { fadeInUp } from '../../lib/animations';
+import { useAuth } from '../../context/AuthContext';
 
 interface AdminLoginProps {
   onLoginSuccess: () => void;
@@ -9,26 +10,31 @@ interface AdminLoginProps {
 }
 
 export default function AdminLogin({ onLoginSuccess, onNavigateHome }: AdminLoginProps) {
+  const { signInWithEmail } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
-    // Simulate authentication delay
-    setTimeout(() => {
-      // Very basic mock validation
-      if (email && password) {
-        onLoginSuccess();
-      } else {
-        setError('Por favor, ingresa correo y contraseña.');
-        setIsLoading(false);
-      }
-    }, 1500);
+    if (!email || !password) {
+      setError('Por favor, ingresa correo y contraseña.');
+      setIsLoading(false);
+      return;
+    }
+
+    const { error: signInError } = await signInWithEmail(email, password);
+    
+    if (signInError) {
+      setError(signInError === 'Invalid login credentials' ? 'Credenciales incorrectas' : signInError);
+      setIsLoading(false);
+    } else {
+      onLoginSuccess();
+    }
   };
 
   return (

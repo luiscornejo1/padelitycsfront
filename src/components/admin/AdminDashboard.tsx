@@ -10,6 +10,7 @@ import InventoryPOSView from './InventoryPOSView';
 import PadelCashAdminView from './PadelCashAdminView';
 import { useLocalStorage } from '../../hooks/useLocalStorage';
 import { CalendarDays, Crown } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 interface AdminDashboardProps {
   onNavigateHome: () => void;
@@ -19,6 +20,7 @@ export default function AdminDashboard({ onNavigateHome }: AdminDashboardProps) 
   const [activeTab, setActiveTab] = useState<'overview' | 'inventory' | 'gestor_americanos' | 'mic_padel_league' | 'academy' | 'major_tournaments' | 'padel_cash_payments'>('overview');
   const [selectedClub, setSelectedClub] = useState<'urban' | 'xpadel'>('urban');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { signOut } = useAuth();
   
   const [totalRevenue] = useLocalStorage<number>('padel_total_revenue', 0);
 
@@ -82,7 +84,10 @@ export default function AdminDashboard({ onNavigateHome }: AdminDashboardProps) 
 
         <div className="p-4 border-t border-slate-800">
           <button 
-            onClick={onNavigateHome}
+            onClick={async () => {
+              await signOut();
+              onNavigateHome();
+            }}
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-brand-gray hover:text-brand-dark hover:bg-white/50 transition-all w-full"
           >
             <LogOut className="w-5 h-5" />
@@ -167,7 +172,8 @@ export default function AdminDashboard({ onNavigateHome }: AdminDashboardProps) 
 
               <div className="p-4 border-t border-slate-800 shrink-0">
                 <button 
-                  onClick={() => {
+                  onClick={async () => {
+                    await signOut();
                     onNavigateHome();
                     setMobileMenuOpen(false);
                   }}

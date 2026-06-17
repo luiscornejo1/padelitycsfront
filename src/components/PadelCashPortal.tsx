@@ -5,6 +5,7 @@ import {
   XCircle, Clock, Check, Sparkles 
 } from 'lucide-react';
 import { useTournaments } from '../context/TournamentContext';
+import { useAuth } from '../context/AuthContext';
 import type { YapeBookingDetails } from '../types/padelCashTypes';
 
 export default function PadelCashPortal() {
@@ -17,6 +18,8 @@ export default function PadelCashPortal() {
     padelCashUsers,
     setCurrentPadelUserById
   } = useTournaments();
+  
+  const { signOut } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'profile' | 'reserve' | 'history'>('profile');
   const [selectedCourt, setSelectedCourt] = useState('Cancha 1 (Panorámica)');
@@ -204,7 +207,7 @@ export default function PadelCashPortal() {
       </div>
 
       {/* Header */}
-      <div className="flex flex-col gap-2 mb-10">
+      <div className="flex justify-between items-start mb-10">
         <div className="flex items-center gap-4">
           <div className="relative">
             <div className="absolute inset-0 bg-emerald-500 blur-xl opacity-20 rounded-full" />
@@ -217,6 +220,12 @@ export default function PadelCashPortal() {
             <p className="text-sm font-medium text-slate-400 mt-1">Tus reservas prepagadas, recompensas y estatus VIP en un solo lugar.</p>
           </div>
         </div>
+        <button 
+          onClick={() => signOut()}
+          className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-lg transition-colors border border-slate-700 text-xs font-bold"
+        >
+          Cerrar Sesión
+        </button>
       </div>
 
       {/* Tabs */}
