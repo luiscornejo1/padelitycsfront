@@ -19,6 +19,8 @@ export default function PlayerTvView({ tournamentId, onBack }: PlayerTvViewProps
 
   const classifiedPairs = (activeTab === 'posiciones' || activeTab === 'jugadores') ? getOverallClassified(tournament, true) : [];
 
+  const [activeCarouselIndex, setActiveCarouselIndex] = useState(0);
+
   const getPlayerHistory = (playerId: string) => {
     if (!tournament || !tournament.fixture) return [];
     
@@ -62,26 +64,10 @@ export default function PlayerTvView({ tournamentId, onBack }: PlayerTvViewProps
     return history.sort((a, b) => a.round - b.round);
   };
 
-  if (!tournament) {
-    return (
-      <div className="min-h-screen bg-[#111418] text-white flex flex-col items-center justify-center p-6">
-        <Activity className="w-12 h-12 text-[#E2FF3A] animate-pulse mb-4" />
-        <h2 className="text-xl font-bold tracking-widest uppercase text-center mb-2">Cargando Torneo...</h2>
-        <p className="text-slate-500 text-sm text-center">Sincronizando datos en vivo</p>
-        <button 
-          onClick={onBack}
-          className="mt-8 px-6 py-2 border border-[#2A3441] text-slate-400 hover:text-white rounded-lg text-xs font-bold tracking-widest uppercase transition-colors"
-        >
-          Volver atrás
-        </button>
-      </div>
-    );
-  }
-
-  const currentRound = tournament.currentRound || 1;
+  const currentRound = tournament?.currentRound || 1;
   const liveMatches: any[] = [];
   
-  if (tournament.fixture) {
+  if (tournament?.fixture) {
     tournament.fixture.forEach(group => {
       let match;
       let matchIdx = -1;
@@ -119,8 +105,6 @@ export default function PlayerTvView({ tournamentId, onBack }: PlayerTvViewProps
     });
   }
 
-  const [activeCarouselIndex, setActiveCarouselIndex] = useState(0);
-
   useEffect(() => {
     if (liveMatches.length <= 1 || activeTab !== 'tv') return;
     
@@ -132,7 +116,23 @@ export default function PlayerTvView({ tournamentId, onBack }: PlayerTvViewProps
     return () => clearInterval(interval);
   }, [liveMatches.length, activeTab]);
 
-  // Ensure index is valid
+  if (!tournament) {
+    return (
+      <div className="min-h-screen bg-[#111418] text-white flex flex-col items-center justify-center p-6">
+        <Activity className="w-12 h-12 text-[#E2FF3A] animate-pulse mb-4" />
+        <h2 className="text-xl font-bold tracking-widest uppercase text-center mb-2">Cargando Torneo...</h2>
+        <p className="text-slate-500 text-sm text-center">Sincronizando datos en vivo</p>
+        <button 
+          onClick={onBack}
+          className="mt-8 px-6 py-2 border border-[#2A3441] text-slate-400 hover:text-white rounded-lg text-xs font-bold tracking-widest uppercase transition-colors"
+        >
+          Volver atrás
+        </button>
+      </div>
+    );
+  }
+
+  // LiveMatches definition and effect moved up above the early return.
   const mainMatch = liveMatches[activeCarouselIndex] || liveMatches[0];
 
   return (
