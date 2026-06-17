@@ -81,7 +81,14 @@ export default function AuthModal({ onClose }: AuthModalProps) {
     focus:border-emerald-500/60 focus:bg-slate-800 placeholder:text-slate-500`;
 
   return (
-    <div className="min-h-screen bg-[#0B1120] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#0B1120] flex items-center justify-center p-4 relative">
+      <button 
+        onClick={onClose}
+        className="absolute top-8 left-8 text-slate-400 hover:text-white flex items-center gap-2 font-semibold text-sm transition-colors z-50"
+      >
+        ← Volver a la página principal
+      </button>
+
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}

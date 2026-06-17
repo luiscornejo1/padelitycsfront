@@ -92,7 +92,7 @@ export default function App() {
 
   // Si el usuario intenta entrar a Padel-Cash sin sesión, mostramos el login
   if (view === 'padel-cash' && !user) {
-    return <AuthModal onClose={() => { /* user will be set after auth */ }} />;
+    return <AuthModal onClose={handleNavigateHome} />;
   }
 
   return (
